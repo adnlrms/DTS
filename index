@@ -1,0 +1,2299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DocTrack QR - Google Workspace Document Routing</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter, Plus Jakarta Sans & UnifrakturMaguntia (for Old English DepEd header) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
+    <!-- Phosphor Icons for minimalistic modern graphical UI -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- QRCode.js for generating QR codes -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- HTML5-QRCode for camera scanning -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                        oldenglish: ['UnifrakturMaguntia', 'Georgia', 'serif'],
+                    },
+                    colors: {
+                        gblue: { DEFAULT: '#4285F4', dark: '#3367D6', light: '#E8F0FE' },
+                        gred: { DEFAULT: '#EA4335', dark: '#C5221F', light: '#FCE8E6' },
+                        gyellow: { DEFAULT: '#FBBC05', dark: '#F29900', light: '#FEF7E0' },
+                        ggreen: { DEFAULT: '#34A853', dark: '#1E8E3E', light: '#E6F4EA' },
+                        gsurface: '#F8FAFD',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #F8FAFD;
+            color: #1F1F1F;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .google-shadow {
+            box-shadow: 0 1px 3px 0 rgba(60,64,67,0.12), 0 4px 8px 3px rgba(60,64,67,0.06);
+        }
+        .google-card-hover {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .google-card-hover:hover {
+            box-shadow: 0 1px 3px 0 rgba(60,64,67,0.2), 0 6px 12px 4px rgba(60,64,67,0.1);
+            transform: translateY(-1px);
+        }
+        /* Hide scrollbars cleanly */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Print Media Styles - Strictly formats the Printable Tracking Template */
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-area, #printable-area * {
+                visibility: visible;
+            }
+            #printable-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col md:flex-row selection:bg-gblue selection:text-white">
+
+    <!-- DESKTOP LEFT NAVIGATION RAIL (Google Material 3 Style) -->
+    <aside class="hidden md:flex flex-col w-24 lg:w-64 bg-white border-r border-gray-200/80 py-6 px-3 lg:px-5 justify-between shrink-0 select-none z-20 no-print">
+        <div>
+            <!-- Brand Header -->
+            <div class="flex items-center gap-3 px-2 mb-8">
+                <div class="w-10 h-10 rounded-2xl bg-gblue/10 flex items-center justify-center relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-2 h-full bg-gblue"></div>
+                    <div class="absolute top-0 right-0 w-full h-2 bg-gred"></div>
+                    <div class="absolute bottom-0 right-0 w-2 h-full bg-ggreen"></div>
+                    <div class="absolute bottom-0 left-0 w-full h-2 bg-gyellow"></div>
+                    <i class="ph-bold ph-qr-code text-2xl text-gblue"></i>
+                </div>
+                <div class="hidden lg:block">
+                    <h1 class="font-display font-bold text-lg tracking-tight text-gray-800 leading-none">DocTrack</h1>
+                    <span class="text-[11px] font-medium text-gray-500 tracking-wider uppercase">Workspace QR</span>
+                </div>
+            </div>
+
+            <!-- Primary Action Button (Google FAB style) -->
+            <button onclick="switchTab('create')" class="w-full mb-6 py-3.5 px-4 rounded-2xl bg-white border border-gray-200 google-shadow hover:bg-gblue/5 active:scale-[0.99] transition flex items-center justify-center lg:justify-start gap-3.5 group">
+                <div class="w-8 h-8 rounded-xl bg-gblue text-white flex items-center justify-center shadow-sm group-hover:rotate-90 transition-transform duration-300">
+                    <i class="ph-bold ph-plus text-lg"></i>
+                </div>
+                <span class="hidden lg:inline font-display font-semibold text-sm text-gray-700">New Document</span>
+            </button>
+
+            <!-- Nav Links -->
+            <nav class="space-y-1.5">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-btn w-full flex items-center justify-center lg:justify-start gap-3.5 px-4 py-3 rounded-full text-sm font-medium transition-all">
+                    <i class="ph-duotone ph-folders text-2xl"></i>
+                    <span class="hidden lg:inline">Track & Logs</span>
+                </button>
+                <button onclick="switchTab('create')" id="nav-create" class="nav-btn w-full flex items-center justify-center lg:justify-start gap-3.5 px-4 py-3 rounded-full text-sm font-medium transition-all">
+                    <i class="ph-duotone ph-file-plus text-2xl"></i>
+                    <span class="hidden lg:inline">Create Slip</span>
+                </button>
+                <button onclick="switchTab('scan')" id="nav-scan" class="nav-btn w-full flex items-center justify-center lg:justify-start gap-3.5 px-4 py-3 rounded-full text-sm font-medium transition-all">
+                    <i class="ph-duotone ph-scan text-2xl"></i>
+                    <span class="hidden lg:inline">QR Scanner</span>
+                </button>
+                <button onclick="switchTab('admin')" id="nav-admin" class="nav-btn w-full flex items-center justify-center lg:justify-start gap-3.5 px-4 py-3 rounded-full text-sm font-medium transition-all">
+                    <i class="ph-duotone ph-shield-check text-2xl"></i>
+                    <span class="hidden lg:inline">Admin & Setup</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Active Operator Status & Connection Badge -->
+        <div class="space-y-3 pt-4 border-t border-gray-100">
+            <div class="px-3 py-2.5 rounded-2xl bg-gray-50 border border-gray-200/60">
+                <div class="flex items-center gap-2.5">
+                    <div id="conn-dot" class="w-2.5 h-2.5 rounded-full bg-ggreen animate-pulse shrink-0"></div>
+                    <div class="hidden lg:block overflow-hidden">
+                        <p id="conn-label" class="text-xs font-semibold text-gray-700 truncate">Local Demo DB</p>
+                        <p class="text-[10px] text-gray-400 truncate">Ready for GAS Sync</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-2 hidden lg:block">
+                <label class="text-[10px] uppercase tracking-wider font-semibold text-gray-400 block mb-1">Active User / Office</label>
+                <select id="active-user-select" onchange="handleActiveUserChange(this.value)" class="w-full text-xs font-medium bg-white border border-gray-200 rounded-xl px-2.5 py-2 text-gray-700 focus:outline-none focus:border-gblue">
+                    <!-- Populated via JS -->
+                </select>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT CONTAINER -->
+    <div class="flex-1 flex flex-col min-w-0 pb-20 md:pb-0">
+        <!-- Mobile Top App Bar -->
+        <header class="bg-white/90 backdrop-blur-md sticky top-0 z-10 border-b border-gray-200/80 px-4 py-3 flex items-center justify-between no-print">
+            <div class="flex items-center gap-2.5 md:hidden">
+                <div class="w-9 h-9 rounded-xl bg-gblue/10 flex items-center justify-center relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-1.5 h-full bg-gblue"></div>
+                    <div class="absolute top-0 right-0 w-full h-1.5 bg-gred"></div>
+                    <div class="absolute bottom-0 right-0 w-1.5 h-full bg-ggreen"></div>
+                    <div class="absolute bottom-0 left-0 w-full h-1.5 bg-gyellow"></div>
+                    <i class="ph-bold ph-qr-code text-xl text-gblue"></i>
+                </div>
+                <div>
+                    <h1 class="font-display font-bold text-base text-gray-800 leading-tight">DocTrack</h1>
+                    <p id="mobile-conn-text" class="text-[10px] text-ggreen font-medium">● Active Ready</p>
+                </div>
+            </div>
+
+            <!-- Global Search Bar (Google Pill Style) -->
+            <div class="hidden md:flex items-center bg-gsurface border border-gray-200/90 focus-within:bg-white focus-within:border-gblue focus-within:ring-4 focus-within:ring-gblue/10 rounded-full px-4 py-2 w-96 transition-all">
+                <i class="ph ph-magnifying-glass text-gray-400 text-lg mr-2.5"></i>
+                <input type="text" id="global-search" oninput="handleSearch(this.value)" placeholder="Search tracking ID, title, or office..." class="bg-transparent border-none text-sm w-full focus:outline-none text-gray-700 placeholder-gray-400">
+            </div>
+
+            <!-- Right Controls: Active User Switcher & Quick Scan -->
+            <div class="flex items-center gap-2.5">
+                <div class="flex items-center gap-1.5 bg-gsurface border border-gray-200 rounded-full px-3 py-1.5">
+                    <i class="ph-duotone ph-user-circle text-gblue text-lg"></i>
+                    <select id="mobile-user-select" onchange="handleActiveUserChange(this.value)" class="bg-transparent text-xs font-medium text-gray-700 focus:outline-none max-w-[140px] sm:max-w-[200px] truncate">
+                        <!-- Populated via JS -->
+                    </select>
+                </div>
+
+                <button onclick="switchTab('scan')" title="Quick QR Scan" class="w-9 h-9 rounded-full bg-gblue text-white flex items-center justify-center shadow-sm hover:bg-gblue-dark active:scale-95 transition">
+                    <i class="ph-bold ph-qr-code text-lg"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN VIEWS WRAPPER -->
+        <main class="flex-1 p-4 sm:p-6 lg:p-8 max-w-6xl w-full mx-auto">
+
+            <!-- VIEW 1: DASHBOARD & DOCUMENT TRACKER -->
+            <section id="view-dashboard" class="space-y-6 no-print">
+                <!-- Google Color Metric Cards (Minimalistic Icon Graphical) -->
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5">
+                    <div onclick="setFilterStatus('ALL')" class="cursor-pointer bg-white p-4 sm:p-5 rounded-3xl border border-gray-200/80 google-card-hover flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-gblue-light text-gblue flex items-center justify-center shrink-0">
+                            <i class="ph-duotone ph-files text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-500">All Documents</p>
+                            <h3 id="stat-total" class="font-display font-bold text-2xl text-gray-800">0</h3>
+                        </div>
+                    </div>
+
+                    <div onclick="setFilterStatus('IN TRANSIT')" class="cursor-pointer bg-white p-4 sm:p-5 rounded-3xl border border-gray-200/80 google-card-hover flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-gyellow-light text-gyellow-dark flex items-center justify-center shrink-0">
+                            <i class="ph-duotone ph-paper-plane-tilt text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-500">In Transit / Processing</p>
+                            <h3 id="stat-transit" class="font-display font-bold text-2xl text-gray-800">0</h3>
+                        </div>
+                    </div>
+
+                    <div onclick="setFilterStatus('COMPLETED')" class="cursor-pointer bg-white p-4 sm:p-5 rounded-3xl border border-gray-200/80 google-card-hover flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-ggreen-light text-ggreen flex items-center justify-center shrink-0">
+                            <i class="ph-duotone ph-check-circle text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-500">Completed</p>
+                            <h3 id="stat-completed" class="font-display font-bold text-2xl text-gray-800">0</h3>
+                        </div>
+                    </div>
+
+                    <div onclick="setFilterStatus('URGENT')" class="cursor-pointer bg-white p-4 sm:p-5 rounded-3xl border border-gray-200/80 google-card-hover flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-gred-light text-gred flex items-center justify-center shrink-0">
+                            <i class="ph-duotone ph-bell-ringing text-2xl"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-medium text-gray-500">Urgent Action</p>
+                            <h3 id="stat-urgent" class="font-display font-bold text-2xl text-gray-800">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile Search Bar -->
+                <div class="md:hidden flex items-center bg-white border border-gray-200 rounded-2xl px-3.5 py-2.5 shadow-sm">
+                    <i class="ph ph-magnifying-glass text-gray-400 text-lg mr-2"></i>
+                    <input type="text" oninput="handleSearch(this.value)" placeholder="Search tracking number, title, or office..." class="bg-transparent text-sm w-full focus:outline-none">
+                </div>
+
+                <!-- Filter Chips & Refresh -->
+                <div class="flex flex-wrap items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                        <button onclick="setFilterStatus('ALL')" id="chip-ALL" class="filter-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-gblue text-white transition">All</button>
+                        <button onclick="setFilterStatus('IN TRANSIT')" id="chip-IN TRANSIT" class="filter-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 transition">In Processing</button>
+                        <button onclick="setFilterStatus('COMPLETED')" id="chip-COMPLETED" class="filter-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 transition">Completed</button>
+                        <button onclick="setFilterStatus('RETURNED')" id="chip-RETURNED" class="filter-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 transition">Returned / Hold</button>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button onclick="syncWithBackend()" class="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white border border-gray-200 text-xs font-medium text-gray-700 hover:bg-gray-50 active:scale-95 transition">
+                            <i id="sync-icon" class="ph-bold ph-arrows-clockwise text-gblue text-sm"></i>
+                            <span>Sync Sheet</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Document List Grid -->
+                <div id="documents-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Populated via JS -->
+                </div>
+            </section>
+
+            <!-- VIEW 2: CREATE DOCUMENT & PRINTABLE FORM GENERATOR -->
+            <section id="view-create" class="hidden space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+                    <!-- Left Column: Input Window (5 cols on lg) -->
+                    <div class="lg:col-span-5 bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow no-print">
+                        <div class="flex items-center justify-between mb-5">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-2xl bg-gblue-light text-gblue flex items-center justify-center">
+                                    <i class="ph-duotone ph-file-plus text-2xl"></i>
+                                </div>
+                                <div>
+                                    <h2 class="font-display font-bold text-lg text-gray-800">Transaction Tracking Details</h2>
+                                    <p class="text-xs text-gray-500">DepEd Division of Agusan del Norte Slip</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <form id="create-doc-form" onsubmit="handleCreateDocument(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">FROM (Unit / Section / School / District) *</label>
+                                <input type="text" id="doc-origin" required value="CURRICULUM IMPLEMENTATION DIVISION" placeholder="e.g., CURRICULUM IMPLEMENTATION DIVISION" oninput="updateLiveTemplatePreview()" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm uppercase font-medium focus:outline-none focus:border-gblue focus:ring-2 focus:ring-gblue/15">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Document Title / Particulars / Details *</label>
+                                <input type="text" id="doc-title" required placeholder="e.g., Submission of Travel Authority / Purchase Request for IT Equipment" oninput="updateLiveTemplatePreview()" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:border-gblue focus:ring-2 focus:ring-gblue/15">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">START (Requesting / Interested Party) *</label>
+                                <input type="text" id="doc-start-party" placeholder="e.g., Maria Santos (Records Section)" oninput="updateLiveTemplatePreview()" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:border-gblue focus:ring-2 focus:ring-gblue/15">
+                            </div>
+
+                            <!-- Multi-select Checklist matching the exact form -->
+                            <div class="space-y-2 bg-gsurface p-3.5 rounded-2xl border border-gray-200/80">
+                                <div class="flex items-center justify-between">
+                                    <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider">TYPE / S OF DOCUMENT (Check all that apply) *</label>
+                                    <button type="button" onclick="clearCheckedDocTypes()" class="text-[11px] text-gblue hover:underline font-medium">Clear</button>
+                                </div>
+
+                                <!-- Special DV Row -->
+                                <div class="p-2.5 bg-white rounded-xl border border-gray-200 space-y-2">
+                                    <label class="flex items-start gap-2 text-xs font-semibold text-gray-800 cursor-pointer">
+                                        <input type="checkbox" id="chk-dv" value="Disbursement Voucher (DV) with Obligation Request & Status (ORS)" onchange="updateLiveTemplatePreview()" class="mt-0.5 rounded text-gblue focus:ring-gblue">
+                                        <span>Disbursement Voucher (DV) with Obligation Request & Status (ORS)</span>
+                                    </label>
+                                    <div class="pl-5 flex flex-wrap items-center gap-3 text-[11px] text-gray-700">
+                                        <span class="italic text-gray-400">Please specify:</span>
+                                        <label class="flex items-center gap-1 cursor-pointer">
+                                            <input type="checkbox" id="chk-dv-ca" onchange="updateLiveTemplatePreview()" class="rounded text-gblue"> Cash Advance
+                                        </label>
+                                        <label class="flex items-center gap-1 cursor-pointer">
+                                            <input type="checkbox" id="chk-dv-dp" onchange="updateLiveTemplatePreview()" class="rounded text-gblue"> Direct Payment
+                                        </label>
+                                        <label class="flex items-center gap-1 cursor-pointer">
+                                            <input type="checkbox" id="chk-dv-reimb" onchange="updateLiveTemplatePreview()" class="rounded text-gblue"> Reimbursement
+                                        </label>
+                                        <div class="flex items-center gap-1 w-full sm:w-auto">
+                                            <input type="checkbox" id="chk-dv-others" onchange="updateLiveTemplatePreview()" class="rounded text-gblue">
+                                            <span>Others:</span>
+                                            <input type="text" id="txt-dv-others" placeholder="Specify..." oninput="document.getElementById('chk-dv-others').checked = !!this.value; updateLiveTemplatePreview()" class="border-b border-gray-300 text-[11px] px-1 py-0.5 focus:outline-none focus:border-gblue w-28 bg-transparent">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Scrollable Document Type Checkboxes -->
+                                <div id="doc-types-checkbox-grid" class="max-h-48 overflow-y-auto pr-1 grid grid-cols-1 gap-1.5 pt-1 text-xs">
+                                    <!-- Populated dynamically via JS from official DepEd Agusan del Norte list -->
+                                </div>
+
+                                <!-- Inline Fill-in Inputs for Letter on, Permit to, and Others -->
+                                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-2 border-t border-gray-200/70">
+                                    <div>
+                                        <label class="block text-[10px] font-semibold text-gray-500">Letter on (Specify):</label>
+                                        <input type="text" id="txt-letter-on" placeholder="Specify topic..." oninput="syncFillInCheckbox('Letter on:', this.value)" class="w-full px-2.5 py-1.5 rounded-lg border border-gray-300 text-xs bg-white focus:outline-none focus:border-gblue">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-semibold text-gray-500">Permit to (Specify):</label>
+                                        <input type="text" id="txt-permit-to" placeholder="e.g. Study / Teach" oninput="syncFillInCheckbox('Permit to', this.value)" class="w-full px-2.5 py-1.5 rounded-lg border border-gray-300 text-xs bg-white focus:outline-none focus:border-gblue">
+                                    </div>
+                                    <div>
+                                        <label class="block text-[10px] font-semibold text-gray-500">Others (Specify):</label>
+                                        <input type="text" id="txt-doc-others" placeholder="Other document..." oninput="syncFillInCheckbox('Others:', this.value)" class="w-full px-2.5 py-1.5 rounded-lg border border-gray-300 text-xs bg-white focus:outline-none focus:border-gblue">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">First Receiving Office / Unit</label>
+                                    <select id="doc-destination" onchange="updateLiveTemplatePreview()" class="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm bg-white focus:outline-none focus:border-gblue">
+                                        <!-- Populated from Offices list -->
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Priority Tag</label>
+                                    <select id="doc-priority" onchange="updateLiveTemplatePreview()" class="w-full px-3 py-2.5 rounded-xl border border-gray-300 text-sm bg-white focus:outline-none focus:border-gblue">
+                                        <option value="NORMAL">Normal</option>
+                                        <option value="URGENT">Urgent / Rush</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Initial Action / Remarks</label>
+                                    <input type="text" id="doc-remarks" placeholder="e.g., For signature / approval" oninput="updateLiveTemplatePreview()" class="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none focus:border-gblue">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">END (Optional Completion Note)</label>
+                                    <input type="text" id="doc-end-note" placeholder="Filled by Requesting Party" oninput="updateLiveTemplatePreview()" class="w-full px-3.5 py-2 rounded-xl border border-gray-300 text-sm focus:outline-none focus:border-gblue">
+                                </div>
+                            </div>
+
+                            <div class="pt-2 flex flex-col sm:flex-row gap-2.5">
+                                <button type="submit" class="flex-1 py-3 px-4 rounded-xl bg-gblue hover:bg-gblue-dark text-white font-display font-semibold text-sm shadow-sm flex items-center justify-center gap-2 active:scale-[0.99] transition">
+                                    <i class="ph-bold ph-qr-code text-lg"></i>
+                                    <span>Register & Generate QR</span>
+                                </button>
+                                <button type="button" onclick="window.print()" class="py-3 px-4 rounded-xl bg-ggreen hover:bg-ggreen-dark text-white font-display font-semibold text-sm shadow-sm flex items-center justify-center gap-2 active:scale-[0.99] transition">
+                                    <i class="ph-bold ph-printer text-lg"></i>
+                                    <span>Print Slip</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Right Column: Printable Tracking Form Template (7 cols on lg) -->
+                    <div class="lg:col-span-7">
+                        <div class="flex items-center justify-between mb-3 no-print">
+                            <span class="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                                <i class="ph-fill ph-eye text-gblue"></i> Official DepEd Agusan del Norte Slip Preview
+                            </span>
+                            <div class="flex items-center gap-3">
+                                <button onclick="openLogoCustomizer()" class="text-xs text-gray-600 hover:text-gblue font-medium flex items-center gap-1 bg-white border border-gray-200 px-2.5 py-1 rounded-lg shadow-2xs transition">
+                                    <i class="ph-bold ph-image text-gblue"></i> Seal Logos
+                                </button>
+                                <button onclick="regenerateDraftId()" class="text-xs text-gblue hover:underline font-medium flex items-center gap-1">
+                                    <i class="ph-bold ph-arrows-clockwise"></i> New Tracking No.
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- THE PRINTABLE TRACKING TEMPLATE (1:1 WITH PROVIDED IMAGE & OFFICIAL SEALS) -->
+                        <div id="printable-area" class="bg-white border-2 border-black p-4 sm:p-6 shadow-sm text-black font-sans text-[11px] leading-snug">
+                            
+                            <!-- Top Official Header + Right-Aligned Tracking No. & Embedded QR -->
+                            <div class="relative flex flex-col items-center text-center pb-2">
+                                <!-- KAGAWARAN NG EDUKASYON (DEPED) NATIONAL SEAL (Detailed Vector Recreation + Custom Image Support) -->
+                                <div class="w-16 h-16 flex items-center justify-center mb-1">
+                                    <img id="custom-deped-seal-img" class="hidden w-16 h-16 object-contain" alt="Kagawaran ng Edukasyon Seal" />
+                                    <svg id="default-deped-seal-svg" viewBox="0 0 200 200" class="w-16 h-16">
+                                        <defs>
+                                            <path id="depedTopArc" d="M 24,104 A 76,76 0 1,1 176,104" fill="none" />
+                                            <path id="depedBotArc" d="M 22,110 A 78,78 0 0,0 178,110" fill="none" />
+                                            <clipPath id="shieldClip">
+                                                <path d="M 55,74 L 145,74 L 138,144 L 100,165 L 62,144 Z" />
+                                            </clipPath>
+                                        </defs>
+                                        <!-- Outer White Ring & Black Border -->
+                                        <circle cx="100" cy="100" r="96" fill="#ffffff" stroke="#111111" stroke-width="3"/>
+                                        <circle cx="100" cy="100" r="66" fill="#ffffff" stroke="#111111" stroke-width="2"/>
+                                        <!-- Circular Text: KAGAWARAN NG EDUKASYON / REPUBLIKA NG PILIPINAS -->
+                                        <text fill="#0d0d8c" font-family="Arial, sans-serif" font-weight="900" font-size="14.5" letter-spacing="1.2">
+                                            <textPath href="#depedTopArc" startOffset="50%" text-anchor="middle">KAGAWARAN NG EDUKASYON</textPath>
+                                        </text>
+                                        <circle cx="24" cy="116" r="4" fill="#0d0d8c"/>
+                                        <circle cx="176" cy="116" r="4" fill="#0d0d8c"/>
+                                        <text fill="#0d0d8c" font-family="Arial, sans-serif" font-weight="800" font-size="11.5" letter-spacing="0.8">
+                                            <textPath href="#depedBotArc" startOffset="50%" text-anchor="middle">REPUBLIKA NG PILIPINAS</textPath>
+                                        </text>
+                                        <!-- Crest above shield: Two Golden Sea-Lions holding Open Book & Torse -->
+                                        <path d="M 74,64 Q 100,60 126,64" stroke="#0d0d8c" stroke-width="4" stroke-dasharray="5,3" fill="none"/>
+                                        <!-- Left & Right Golden Sea Lions -->
+                                        <path d="M 70,58 C 65,48 70,38 80,42 C 84,44 86,50 88,54 L 76,60 Z" fill="#f59e0b" stroke="#111" stroke-width="1"/>
+                                        <path d="M 130,58 C 135,48 130,38 120,42 C 116,44 114,50 112,54 L 124,60 Z" fill="#f59e0b" stroke="#111" stroke-width="1"/>
+                                        <!-- Open Book at Top Crest -->
+                                        <path d="M 88,40 Q 94,38 100,41 Q 106,38 112,40 L 112,55 Q 106,53 100,56 Q 94,53 88,55 Z" fill="#ffffff" stroke="#111111" stroke-width="1.3"/>
+                                        <line x1="100" y1="41" x2="100" y2="56" stroke="#111111" stroke-width="1.2"/>
+                                        <!-- Shield Outer Frame -->
+                                        <path d="M 50,70 L 150,70 L 142,147 L 100,170 L 58,147 Z" fill="#ffffff" stroke="#222222" stroke-width="2"/>
+                                        <!-- Shield Inner Royal Blue Field -->
+                                        <g clip-path="url(#shieldClip)">
+                                            <rect x="50" y="70" width="100" height="100" fill="#0d0d8c"/>
+                                            <!-- Golden Sun Rays from Center -->
+                                            <g stroke="#fbbf24" stroke-width="1.6">
+                                                <line x1="100" y1="95" x2="50" y2="70"/><line x1="100" y1="95" x2="75" y2="70"/>
+                                                <line x1="100" y1="95" x2="100" y2="70"/><line x1="100" y1="95" x2="125" y2="70"/>
+                                                <line x1="100" y1="95" x2="150" y2="70"/><line x1="100" y1="95" x2="150" y2="90"/>
+                                                <line x1="100" y1="95" x2="150" y2="112"/><line x1="100" y1="95" x2="150" y2="138"/>
+                                                <line x1="100" y1="95" x2="135" y2="165"/><line x1="100" y1="95" x2="112" y2="168"/>
+                                                <line x1="100" y1="95" x2="88" y2="168"/><line x1="100" y1="95" x2="65" y2="165"/>
+                                                <line x1="100" y1="95" x2="50" y2="138"/><line x1="100" y1="95" x2="50" y2="112"/>
+                                                <line x1="100" y1="95" x2="50" y2="90"/>
+                                            </g>
+                                            <!-- Golden Archipelago Silhouette (Luzon, Visayas, Mindanao) -->
+                                            <path d="M 92,76 L 103,77 L 105,92 L 96,98 L 90,90 Z" fill="#fbbf24"/>
+                                            <path d="M 104,104 L 116,112 L 112,122 L 102,116 Z" fill="#fbbf24"/>
+                                            <path d="M 78,125 L 88,115 L 90,118 L 80,130 Z" fill="#fbbf24"/>
+                                            <path d="M 106,126 L 124,128 L 128,144 L 114,150 L 104,140 Z" fill="#fbbf24"/>
+                                        </g>
+                                        <!-- Flaming Torch in Center of Shield -->
+                                        <path d="M 95,105 L 105,105 L 101,158 L 99,158 Z" fill="#ffffff" stroke="#111111" stroke-width="1.5"/>
+                                        <rect x="92" y="100" width="16" height="5" rx="2" fill="#ffffff" stroke="#111111" stroke-width="1.3"/>
+                                        <path d="M 100,79 C 110,87 110,96 105,100 L 95,100 C 90,96 90,87 100,79 Z" fill="#dc2626" stroke="#111111" stroke-width="1.2"/>
+                                        <path d="M 100,83 C 105,89 104,95 100,99 C 96,95 96,89 100,83 Z" fill="#fca5a5"/>
+                                    </svg>
+                                </div>
+                                <p class="text-[11px] font-serif leading-tight">Republic of the Philippines</p>
+                                <p class="text-base font-oldenglish tracking-wide leading-tight">Department of Education</p>
+                                <p class="text-[10px] font-serif font-semibold leading-tight">Caraga Region</p>
+                                <p class="text-[11px] font-bold uppercase tracking-wider leading-tight">DIVISION OF AGUSAN DEL NORTE</p>
+                                <h1 class="text-base sm:text-lg font-extrabold uppercase tracking-wider mt-1.5">TRANSACTION TRACKING SLIP</h1>
+
+                                <!-- Embedded QR Code + Tracking No. Line -->
+                                <div class="w-full flex items-end justify-end gap-3 mt-1">
+                                    <div class="flex items-baseline gap-1.5">
+                                        <span class="font-bold text-[11px]">Tracking No.:</span>
+                                        <span id="tpl-tracking-id" class="inline-block border-b border-black font-mono font-bold text-xs px-2 min-w-[130px] text-center">DOC-2026-8841</span>
+                                    </div>
+                                    <div class="border border-black p-1 bg-white shrink-0 flex flex-col items-center" title="Scan via DocTrack App">
+                                        <div id="qrcode-container" class="w-[60px] h-[60px] flex items-center justify-center"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- FROM (Unit / Section / School / District) -->
+                            <div class="mt-1 flex items-baseline gap-1.5 text-[11px]">
+                                <span class="font-bold shrink-0">FROM (Unit / Section / School / District):</span>
+                                <span id="tpl-origin" class="flex-1 border-b border-black font-bold uppercase px-1.5 tracking-wide">CURRICULUM IMPLEMENTATION DIVISION</span>
+                            </div>
+
+                            <!-- TYPE / S OF DOCUMENT (Kindly check) -->
+                            <div class="mt-2">
+                                <div class="font-bold text-[11px] mb-1">TYPE / S OF DOCUMENT (Kindly check) :</div>
+
+                                <!-- Disbursement Voucher Main & Sub-options Row -->
+                                <div class="pl-1 mb-1.5 space-y-1">
+                                    <div class="flex items-center gap-1.5">
+                                        <span id="box-dv" class="inline-flex items-center justify-center w-3.5 h-3.5 border border-black text-[10px] font-bold leading-none"></span>
+                                        <span class="font-medium">Disbursement Voucher (DV) with Obligation Request &amp; Status (ORS)</span>
+                                    </div>
+                                    <div class="pl-6 flex flex-wrap items-center gap-x-4 gap-y-1 text-[10px]">
+                                        <span class="italic">Please specify:</span>
+                                        <span class="inline-flex items-center gap-1">
+                                            <span id="box-dv-ca" class="inline-flex items-center justify-center w-3.5 h-3.5 border border-black text-[10px] font-bold leading-none"></span>
+                                            <span>Cash Advance</span>
+                                        </span>
+                                        <span class="inline-flex items-center gap-1">
+                                            <span id="box-dv-dp" class="inline-flex items-center justify-center w-3.5 h-3.5 border border-black text-[10px] font-bold leading-none"></span>
+                                            <span>Direct Payment</span>
+                                        </span>
+                                        <span class="inline-flex items-center gap-1">
+                                            <span id="box-dv-reimb" class="inline-flex items-center justify-center w-3.5 h-3.5 border border-black text-[10px] font-bold leading-none"></span>
+                                            <span>Reimbursement</span>
+                                        </span>
+                                        <span class="inline-flex items-center gap-1">
+                                            <span id="box-dv-others" class="inline-flex items-center justify-center w-3.5 h-3.5 border border-black text-[10px] font-bold leading-none"></span>
+                                            <span>Others:</span>
+                                            <span id="tpl-dv-others" class="inline-block border-b border-black min-w-[90px] px-1 font-semibold"></span>
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- 3-Column Document Types Checklist -->
+                                <div id="tpl-doc-types-columns" class="grid grid-cols-3 gap-x-2.5 text-[9.5px] leading-tight pl-1">
+                                    <!-- Dynamically rendered 3 columns matching exact DepEd Agusan del Norte Slip -->
+                                </div>
+                            </div>
+
+                            <!-- FILLABLE DOCUMENT TITLE / DETAILS PLACEHOLDER ABOVE START -->
+                            <div class="mt-2.5 pt-1.5 border-t border-black flex items-baseline gap-1.5 text-[10.5px]">
+                                <span class="font-bold shrink-0 uppercase">Document Title / Details:</span>
+                                <input type="text" id="tpl-doc-details-input" placeholder="Click to enter document title or additional details..." oninput="syncTemplateTitleInput(this.value)" class="flex-1 border-b border-black font-bold text-black px-1 bg-transparent focus:outline-none focus:bg-gblue/5 placeholder:text-gray-400 placeholder:font-normal placeholder:italic print:placeholder:text-transparent" />
+                            </div>
+
+                            <!-- START (MUST BE FILLED OUT BY THE REQUESTING / INTERESTED PARTY) -->
+                            <div class="mt-1.5 flex items-baseline gap-1.5 text-[10.5px]">
+                                <span class="font-bold shrink-0">START (MUST BE FILLED OUT BY THE REQUESTING / INTERESTED PARTY):</span>
+                                <span id="tpl-start-party" class="flex-1 border-b border-black font-semibold px-1 truncate min-h-[15px]"></span>
+                            </div>
+
+                            <!-- 4-COLUMN ROUTING & ACTION TABLE -->
+                            <div class="mt-1.5">
+                                <table class="w-full border-collapse border-2 border-black text-[10.5px]">
+                                    <thead>
+                                        <tr class="bg-gray-50 text-center font-bold">
+                                            <th class="border border-black py-1 px-1.5 w-[20%]">DATE / TIME<br>FORWARDED</th>
+                                            <th class="border border-black py-1 px-1.5 w-[26%]">OFFICE / UNIT</th>
+                                            <th class="border border-black py-1 px-1.5 w-[24%]">SIGNATURE / DATE</th>
+                                            <th class="border border-black py-1 px-1.5 w-[30%]">ACTION TAKEN (REMARKS, IF ANY)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tpl-routing-rows">
+                                        <!-- 14 rows populated via JS -->
+                                    </tbody>
+                                </table>
+                                <p class="text-center italic text-[9.5px] mt-0.5">(Continue on separate sheet if necessary)</p>
+                            </div>
+
+                            <!-- END (MUST BE FILLED OUT BY THE REQUESTING / INTERESTED PARTY) -->
+                            <div class="mt-1.5 pt-1 flex items-baseline gap-1.5 text-[10.5px]">
+                                <span class="font-bold shrink-0">END (MUST BE FILLED OUT BY THE REQUESTING / INTERESTED PARTY):</span>
+                                <span id="tpl-end-party" class="flex-1 border-b border-black font-semibold px-1 min-h-[15px]"></span>
+                            </div>
+
+                            <!-- Official Division Footer with DIVISION OF AGUSAN DEL NORTE Seal -->
+                            <div class="mt-2.5 pt-2 border-t-2 border-black flex items-center justify-between gap-3 text-[9.5px] leading-tight">
+                                <div class="flex items-center gap-3">
+                                    <!-- DIVISION OF AGUSAN DEL NORTE OFFICIAL SEAL (Detailed Vector Recreation + Custom Image Support) -->
+                                    <div class="w-14 h-14 shrink-0 flex items-center justify-center">
+                                        <img id="custom-adn-seal-img" class="hidden w-14 h-14 object-contain" alt="Division of Agusan del Norte Seal" />
+                                        <svg id="default-adn-seal-svg" viewBox="0 0 200 200" class="w-14 h-14">
+                                            <defs>
+                                                <path id="adnTopArc" d="M 25,112 A 76,76 0 1,1 175,112" fill="none" />
+                                                <path id="adnBotArc" d="M 26,118 A 76,76 0 0,0 174,118" fill="none" />
+                                                <clipPath id="adnInnerClip">
+                                                    <circle cx="100" cy="100" r="56" />
+                                                </clipPath>
+                                            </defs>
+                                            <!-- Outer Black, Yellow, Red & White Rings -->
+                                            <circle cx="100" cy="100" r="97" fill="#fde047" stroke="#000000" stroke-width="3"/>
+                                            <circle cx="100" cy="100" r="92" fill="#ffffff" stroke="#dc2626" stroke-width="3.5"/>
+                                            <circle cx="100" cy="100" r="64" fill="#ffffff" stroke="#000000" stroke-width="2.5"/>
+                                            <!-- Top Red Arc Text: DIVISION OF AGUSAN DEL NORTE -->
+                                            <text fill="#dc2626" font-family="Arial, sans-serif" font-weight="900" font-size="13.2" letter-spacing="0.7">
+                                                <textPath href="#adnTopArc" startOffset="50%" text-anchor="middle">DIVISION OF AGUSAN DEL NORTE</textPath>
+                                            </text>
+                                            <!-- Two Gold Stars -->
+                                            <polygon points="30,130 32,135 37,135 33,138 35,143 30,140 25,143 27,138 23,135 28,135" fill="#eab308" stroke="#713f12" stroke-width="0.6"/>
+                                            <polygon points="170,130 172,135 177,135 173,138 175,143 170,140 165,143 167,138 163,135 168,135" fill="#eab308" stroke="#713f12" stroke-width="0.6"/>
+                                            <!-- Bottom Black Arc Text: DEPARTMENT OF EDUCATION -->
+                                            <text fill="#111111" font-family="Arial, sans-serif" font-weight="900" font-size="11.2" letter-spacing="0.5">
+                                                <textPath href="#adnBotArc" startOffset="50%" text-anchor="middle">DEPARTMENT OF EDUCATION</textPath>
+                                            </text>
+                                            <!-- Inner Landscape, Mountains, Water, Gear & Rope -->
+                                            <g clip-path="url(#adnInnerClip)">
+                                                <!-- Sky & Sunburst -->
+                                                <rect x="40" y="40" width="120" height="65" fill="#e0f2fe"/>
+                                                <g stroke="#fde047" stroke-width="3">
+                                                    <line x1="100" y1="88" x2="55" y2="50"/><line x1="100" y1="88" x2="75" y2="44"/>
+                                                    <line x1="100" y1="88" x2="100" y2="42"/><line x1="100" y1="88" x2="125" y2="44"/>
+                                                    <line x1="100" y1="88" x2="145" y2="50"/>
+                                                </g>
+                                                <!-- Green Mountains (Mt. Hilong-Hilong / Agusan Landscape) -->
+                                                <path d="M 44,96 Q 68,75 88,82 Q 108,65 130,78 L 156,96 Z" fill="#15803d"/>
+                                                <path d="M 44,102 L 156,102 L 156,93 L 44,93 Z" fill="#4ade80"/>
+                                                <!-- Blue Agusan River / Butuan Bay Water -->
+                                                <rect x="44" y="102" width="112" height="40" fill="#0284c7"/>
+                                                <!-- Bottom Timber Logs & Heritage Base -->
+                                                <circle cx="72" cy="144" r="8" fill="#d97706" stroke="#78350f" stroke-width="1"/>
+                                                <circle cx="85" cy="147" r="8" fill="#f59e0b" stroke="#78350f" stroke-width="1"/>
+                                                <circle cx="128" cy="144" r="8" fill="#d97706" stroke="#78350f" stroke-width="1"/>
+                                                <circle cx="115" cy="147" r="8" fill="#f59e0b" stroke="#78350f" stroke-width="1"/>
+                                            </g>
+                                            <!-- Rope Top Arc & Red Gear Bottom Arc -->
+                                            <path d="M 60,72 Q 100,45 140,72" fill="none" stroke="#d97706" stroke-width="6" stroke-linecap="round" stroke-dasharray="6,2"/>
+                                            <path d="M 55,95 A 46,46 0 0,0 145,95" fill="none" stroke="#dc2626" stroke-width="5" stroke-dasharray="7,4"/>
+                                            <!-- Central Open Book & Flaming Torch -->
+                                            <path d="M 76,106 L 98,104 L 98,125 L 72,126 Z" fill="#fef3c7" stroke="#111111" stroke-width="1.2"/>
+                                            <path d="M 124,106 L 102,104 L 102,125 L 128,126 Z" fill="#fef3c7" stroke="#111111" stroke-width="1.2"/>
+                                            <!-- Blue & White Torch Handle -->
+                                            <polygon points="92,102 108,102 100,142" fill="#1d4ed8" stroke="#111111" stroke-width="1.2"/>
+                                            <!-- Red/Orange Flame -->
+                                            <path d="M 100,74 C 110,84 112,94 105,100 L 95,100 C 88,94 92,84 100,74 Z" fill="#ea580c" stroke="#ffffff" stroke-width="1"/>
+                                            <path d="M 100,80 C 105,87 105,94 100,98 C 95,94 95,87 100,80 Z" fill="#facc15"/>
+                                        </svg>
+                                    </div>
+                                    <div class="grid grid-cols-[74px_1fr] gap-x-1 text-[9.5px] leading-snug">
+                                        <span class="font-bold">Address:</span>
+                                        <span>J. P. Rosales Avenue, Butuan City, Agusan del Norte</span>
+                                        <span class="font-bold">Telephone:</span>
+                                        <span>(085) 817-7141</span>
+                                        <span class="font-bold">Email Address:</span>
+                                        <span>agusan.norte@deped.gov.ph</span>
+                                        <span class="font-bold">Website:</span>
+                                        <span>depedagnor.com</span>
+                                    </div>
+                                </div>
+                                <div class="text-right text-[8px] text-gray-500 font-mono self-end">
+                                    <div>QR-DTS v2.0</div>
+                                    <div id="tpl-priority-badge" class="font-bold uppercase text-black">NORMAL</div>
+                                </div>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 3: QR CODE SCANNER WINDOW (MOBILE & DESKTOP COMPATIBLE) -->
+            <section id="view-scan" class="hidden space-y-6 no-print">
+                <div class="max-w-2xl mx-auto space-y-5">
+
+                    <!-- Scanner Header Card -->
+                    <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow">
+                        <div class="flex flex-wrap items-center justify-between gap-4 mb-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-11 h-11 rounded-2xl bg-gblue-light text-gblue flex items-center justify-center">
+                                    <i class="ph-duotone ph-scan text-2xl"></i>
+                                </div>
+                                <div>
+                                    <h2 class="font-display font-bold text-lg text-gray-800">Receiving Office Scanner</h2>
+                                    <p class="text-xs text-gray-500">Scan document QR slip to log receipt or update status</p>
+                                </div>
+                            </div>
+
+                            <!-- Camera Controls -->
+                            <div class="flex items-center gap-2">
+                                <button id="btn-start-camera" onclick="startCameraScanner()" class="px-4 py-2 rounded-full bg-gblue text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm hover:bg-gblue-dark transition">
+                                    <i class="ph-bold ph-camera text-base"></i>
+                                    <span>Open Camera</span>
+                                </button>
+                                <button id="btn-stop-camera" onclick="stopCameraScanner()" class="hidden px-4 py-2 rounded-full bg-gred text-white text-xs font-semibold flex items-center gap-1.5 shadow-sm hover:bg-gred-dark transition">
+                                    <i class="ph-bold ph-stop-circle text-base"></i>
+                                    <span>Stop</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Camera Viewport -->
+                        <div class="relative rounded-2xl overflow-hidden bg-gray-900 border-2 border-dashed border-gray-700 min-h-[260px] flex flex-col items-center justify-center">
+                            <div id="qr-reader" class="w-full max-w-md"></div>
+                            <div id="camera-placeholder" class="p-8 text-center space-y-3">
+                                <div class="w-16 h-16 rounded-full bg-gray-800 text-gblue mx-auto flex items-center justify-center">
+                                    <i class="ph-duotone ph-qr-code text-4xl"></i>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-sm font-medium text-white">Camera Ready for QR Scanning</p>
+                                    <p class="text-xs text-gray-400 max-w-xs mx-auto">Tap "Open Camera" to scan a printed QR code, or select an active document below to test instant scanning.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Manual Tracking ID Entry / Quick Demo Scan -->
+                        <div class="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-[11px] font-semibold uppercase text-gray-400 mb-1">Manual Tracking ID Lookup</label>
+                                <div class="flex gap-2">
+                                    <input type="text" id="manual-scan-input" placeholder="e.g. DOC-2026-1042" class="flex-1 px-3 py-2 rounded-xl border border-gray-300 text-xs font-mono uppercase focus:outline-none focus:border-gblue">
+                                    <button onclick="triggerManualScan()" class="px-3.5 py-2 rounded-xl bg-gray-800 text-white text-xs font-semibold hover:bg-black transition">Lookup</button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-[11px] font-semibold uppercase text-gray-400 mb-1">Simulate QR Scan (Instant Test)</label>
+                                <select id="simulate-qr-select" onchange="if(this.value) { processScannedCode(this.value); this.value=''; }" class="w-full px-3 py-2 rounded-xl border border-gblue/40 bg-gblue-light/40 text-xs font-medium text-gblue-dark focus:outline-none">
+                                    <option value="">⚡ Select a document to simulate scan...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Scanned Document Action Card (Appears upon scan) -->
+                    <div id="scanned-action-panel" class="hidden bg-white rounded-3xl border-2 border-gblue p-5 sm:p-6 google-shadow space-y-5 animate-fade-in">
+                        <div class="flex items-start justify-between gap-3 border-b border-gray-100 pb-4">
+                            <div>
+                                <span id="scan-doc-id" class="inline-block px-2.5 py-0.5 rounded-md bg-gblue-light text-gblue font-mono font-bold text-xs">DOC-2026-XXXX</span>
+                                <h3 id="scan-doc-title" class="font-display font-bold text-lg text-gray-900 mt-1">Document Title</h3>
+                                <p id="scan-doc-meta" class="text-xs text-gray-500">Origin: Finance • Current Status: IN TRANSIT</p>
+                            </div>
+                            <button onclick="closeScannedPanel()" class="p-1.5 rounded-full hover:bg-gray-100 text-gray-400">
+                                <i class="ph-bold ph-x text-lg"></i>
+                            </button>
+                        </div>
+
+                        <form onsubmit="submitScanAction(event)" class="space-y-4">
+                            <div class="p-3.5 rounded-2xl bg-gsurface border border-gray-200/80 flex items-center justify-between">
+                                <div class="flex items-center gap-2.5">
+                                    <i class="ph-duotone ph-buildings text-xl text-gblue"></i>
+                                    <div>
+                                        <p class="text-[11px] text-gray-400 font-medium">Scanning as Receiving Office / User</p>
+                                        <p id="scan-current-operator" class="text-xs font-bold text-gray-800">Records Section (Maria Santos)</p>
+                                    </div>
+                                </div>
+                                <span class="text-[11px] font-mono text-ggreen font-semibold">● Verified</span>
+                            </div>
+
+                            <!-- Graphical Icon Action Selector -->
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Select Receiving Action *</label>
+                                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="scan-action" value="RECEIVED" checked class="peer sr-only">
+                                        <div class="p-3 rounded-2xl border border-gray-200 peer-checked:border-gblue peer-checked:bg-gblue-light/60 flex flex-col items-center text-center gap-1 transition">
+                                            <i class="ph-duotone ph-download-simple text-2xl text-gblue"></i>
+                                            <span class="text-xs font-bold text-gray-800">Receive</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="scan-action" value="RELEASED / FORWARDED" class="peer sr-only">
+                                        <div class="p-3 rounded-2xl border border-gray-200 peer-checked:border-gyellow-dark peer-checked:bg-gyellow-light/60 flex flex-col items-center text-center gap-1 transition">
+                                            <i class="ph-duotone ph-paper-plane-right text-2xl text-gyellow-dark"></i>
+                                            <span class="text-xs font-bold text-gray-800">Forward</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="scan-action" value="COMPLETED" class="peer sr-only">
+                                        <div class="p-3 rounded-2xl border border-gray-200 peer-checked:border-ggreen peer-checked:bg-ggreen-light/60 flex flex-col items-center text-center gap-1 transition">
+                                            <i class="ph-duotone ph-check-fat text-2xl text-ggreen"></i>
+                                            <span class="text-xs font-bold text-gray-800">Complete</span>
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="scan-action" value="RETURNED" class="peer sr-only">
+                                        <div class="p-3 rounded-2xl border border-gray-200 peer-checked:border-gred peer-checked:bg-gred-light/60 flex flex-col items-center text-center gap-1 transition">
+                                            <i class="ph-duotone ph-arrow-u-up-left text-2xl text-gred"></i>
+                                            <span class="text-xs font-bold text-gray-800">Return/Hold</span>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1.5">Log Notes / Remarks</label>
+                                <input type="text" id="scan-remarks" placeholder="e.g., Received complete attachments, routed for Dept Head signature" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-sm focus:outline-none focus:border-gblue">
+                            </div>
+
+                            <button type="submit" class="w-full py-3.5 rounded-2xl bg-ggreen hover:bg-ggreen-dark text-white font-display font-bold text-sm shadow-sm flex items-center justify-center gap-2 active:scale-[0.99] transition">
+                                <i class="ph-bold ph-check-circle text-lg"></i>
+                                <span>Confirm & Update Tracking Log</span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 4: ADMIN SETTINGS & GOOGLE APPS SCRIPT BACKEND -->
+            <section id="view-admin" class="hidden space-y-6 no-print">
+
+                <!-- Admin Lock Screen (Verified against Backend / Pre-registered Admin Code) -->
+                <div id="admin-lock-screen" class="max-w-md mx-auto bg-white rounded-3xl border border-gray-200/80 p-6 sm:p-8 text-center google-shadow my-8">
+                    <div class="w-16 h-16 rounded-2xl bg-gred-light text-gred mx-auto flex items-center justify-center mb-4">
+                        <i class="ph-duotone ph-lock-key text-3xl"></i>
+                    </div>
+                    <h2 class="font-display font-bold text-xl text-gray-800">Admin Authentication</h2>
+                    <p class="text-xs text-gray-500 mt-1 mb-6">Enter the pre-registered backend Admin Passcode to manage users, offices, and Google Sheet integration.</p>
+
+                    <form onsubmit="verifyAdminAccess(event)" class="space-y-4">
+                        <input type="password" id="admin-passcode-input" required placeholder="Enter Admin Code" class="w-full px-4 py-3 rounded-2xl border border-gray-300 text-center font-mono text-base tracking-widest focus:outline-none focus:border-gblue focus:ring-2 focus:ring-gblue/20">
+                        <button type="submit" class="w-full py-3 rounded-2xl bg-gblue hover:bg-gblue-dark text-white font-display font-semibold text-sm shadow-sm transition">
+                            Unlock Admin Console
+                        </button>
+                    </form>
+                    <p class="text-[11px] text-gray-400 mt-4">Default Pre-registered Backend Code for Demo: <code class="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">ADMIN-2026</code></p>
+                </div>
+
+                <!-- Unlocked Admin Dashboard -->
+                <div id="admin-console-content" class="hidden space-y-6">
+                    <div class="flex flex-wrap items-center justify-between gap-4 bg-white p-5 rounded-3xl border border-gray-200/80 google-shadow">
+                        <div class="flex items-center gap-3">
+                            <div class="w-11 h-11 rounded-2xl bg-ggreen-light text-ggreen flex items-center justify-center">
+                                <i class="ph-duotone ph-shield-check text-2xl"></i>
+                            </div>
+                            <div>
+                                <h2 class="font-display font-bold text-lg text-gray-800">Administrator Console</h2>
+                                <p class="text-xs text-gray-500">Manage Offices/Users, Google Apps Script Connection & Backend Code</p>
+                            </div>
+                        </div>
+                        <button onclick="lockAdminConsole()" class="px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-700 flex items-center gap-1.5 transition">
+                            <i class="ph-bold ph-lock"></i> Lock Console
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                        <!-- User & Receiving Office Management (6 cols) -->
+                        <div class="lg:col-span-6 bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-5">
+                            <div class="flex items-center gap-2.5">
+                                <i class="ph-duotone ph-users-three text-2xl text-gblue"></i>
+                                <div>
+                                    <h3 class="font-display font-bold text-base text-gray-800">Registered Users & Receiving Offices</h3>
+                                    <p class="text-xs text-gray-500">Add personnel who can create or scan documents</p>
+                                </div>
+                            </div>
+
+                            <form onsubmit="handleAddUser(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 bg-gsurface p-3.5 rounded-2xl border border-gray-200/70">
+                                <input type="text" id="new-user-name" required placeholder="Full Name (e.g. Juan Cruz)" class="sm:col-span-5 px-3 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-gblue">
+                                <input type="text" id="new-user-office" required placeholder="Office / Division (e.g. Accounting)" class="sm:col-span-4 px-3 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-gblue">
+                                <button type="submit" class="sm:col-span-3 py-2 px-3 rounded-xl bg-gblue text-white text-xs font-semibold hover:bg-gblue-dark flex items-center justify-center gap-1 transition">
+                                    <i class="ph-bold ph-user-plus"></i> Add User
+                                </button>
+                            </form>
+
+                            <div id="admin-users-list" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+                                <!-- Populated via JS -->
+                            </div>
+                        </div>
+
+                        <!-- Google Sheet & Apps Script Web App Connection (6 cols) -->
+                        <div class="lg:col-span-6 bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-5">
+                            <div class="flex items-center gap-2.5">
+                                <i class="ph-duotone ph-cloud-check text-2xl text-ggreen"></i>
+                                <div>
+                                    <h3 class="font-display font-bold text-base text-gray-800">Google Sheets & Apps Script Endpoint</h3>
+                                    <p class="text-xs text-gray-500">Connect this frontend to your deployed Google Apps Script Web App URL</p>
+                                </div>
+                            </div>
+
+                            <div class="space-y-3">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Google Apps Script Web App URL</label>
+                                    <input type="url" id="gas-webapp-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs font-mono focus:outline-none focus:border-gblue">
+                                </div>
+
+                                <div class="flex flex-wrap gap-2">
+                                    <button onclick="saveGasConnection()" class="px-4 py-2.5 rounded-xl bg-ggreen hover:bg-ggreen-dark text-white text-xs font-semibold flex items-center gap-1.5 transition">
+                                        <i class="ph-bold ph-floppy-disk"></i> Save & Connect Backend
+                                    </button>
+                                    <button onclick="clearGasConnection()" class="px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold transition">
+                                        Use Local Demo Mode
+                                    </button>
+                                </div>
+
+                                <div class="p-3.5 rounded-2xl bg-gblue-light/50 border border-gblue/20 text-xs text-gray-700 space-y-1">
+                                    <p class="font-semibold text-gblue-dark flex items-center gap-1.5">
+                                        <i class="ph-fill ph-info"></i> How Admin Security Works:
+                                    </p>
+                                    <p class="text-[11px] leading-relaxed">
+                                        The pre-registered Admin Code (<code class="font-mono font-bold">ADMIN_SECRET_CODE</code>) is stored exclusively inside your Google Apps Script backend (<code class="font-mono">Code.gs</code>) so it is completely hidden from client source code.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Complete Google Apps Script Backend Code (Code.gs) -->
+                    <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-4">
+                        <div class="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                                <span class="px-2.5 py-1 rounded-full bg-gyellow-light text-gyellow-dark font-bold text-[10px] uppercase tracking-wider">Backend Script</span>
+                                <h3 class="font-display font-bold text-base text-gray-800 mt-1">Google Apps Script (`Code.gs`) for Google Sheets</h3>
+                                <p class="text-xs text-gray-500">1. Open a new Google Sheet → 2. Click <strong>Extensions > Apps Script</strong> → 3. Paste this code & click <strong>Deploy > New Deployment > Web App (Anyone)</strong>.</p>
+                            </div>
+                            <button onclick="copyGasBackendCode()" class="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-semibold flex items-center gap-2 transition">
+                                <i class="ph-bold ph-copy"></i> Copy `Code.gs`
+                            </button>
+                        </div>
+
+                        <pre id="gas-code-block" class="bg-gray-900 text-gray-100 p-4 rounded-2xl text-[11px] font-mono overflow-x-auto leading-relaxed max-h-96">/**
+ * DOCTRACK QR - GOOGLE SHEETS & APPS SCRIPT BACKEND (Code.gs)
+ * Database Sheets Auto-Created: "Documents", "TrackingLogs", "Users"
+ */
+
+// PRE-REGISTERED HIDDEN ADMIN CODE (Stored strictly in Backend)
+const ADMIN_SECRET_CODE = "ADMIN-2026";
+
+function setupSheets() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  
+  if (!ss.getSheetByName("Documents")) {
+    const docSheet = ss.insertSheet("Documents");
+    docSheet.appendRow(["TrackingID", "Title", "Type", "Priority", "OriginOffice", "DestinationOffice", "Custom1", "Custom2", "Remarks", "Status", "CurrentOffice", "CreatedBy", "CreatedAt"]);
+  }
+  if (!ss.getSheetByName("TrackingLogs")) {
+    const logSheet = ss.insertSheet("TrackingLogs");
+    logSheet.appendRow(["LogID", "TrackingID", "Office", "Action", "HandledBy", "Remarks", "Timestamp"]);
+  }
+  if (!ss.getSheetByName("Users")) {
+    const userSheet = ss.insertSheet("Users");
+    userSheet.appendRow(["UserID", "Name", "Office", "Role", "CreatedAt"]);
+    userSheet.appendRow(["USR-01", "Maria Santos", "Records Section", "Staff", new Date().toISOString()]);
+    userSheet.appendRow(["USR-02", "Engr. Robert Lim", "Procurement Office", "Officer", new Date().toISOString()]);
+    userSheet.appendRow(["USR-03", "Atty. Clara Reyes", "Legal Division", "Director", new Date().toISOString()]);
+  }
+}
+
+function doGet(e) {
+  setupSheets();
+  const action = e.parameter.action || "getAll";
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  if (action === "getAll") {
+    const docs = sheetToObjects(ss.getSheetByName("Documents"));
+    const logs = sheetToObjects(ss.getSheetByName("TrackingLogs"));
+    const users = sheetToObjects(ss.getSheetByName("Users"));
+    return jsonResponse({ status: "success", documents: docs, logs: logs, users: users });
+  }
+  return jsonResponse({ status: "error", message: "Unknown GET action" });
+}
+
+function doPost(e) {
+  setupSheets();
+  const payload = JSON.parse(e.postData.contents);
+  const action = payload.action;
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // 1. Verify Hidden Admin Code
+  if (action === "verifyAdmin") {
+    const isValid = (payload.adminCode === ADMIN_SECRET_CODE);
+    return jsonResponse({ status: isValid ? "success" : "unauthorized", valid: isValid });
+  }
+
+  // 2. Create Document & Initial Log
+  if (action === "createDocument") {
+    const d = payload.document;
+    const docSheet = ss.getSheetByName("Documents");
+    docSheet.appendRow([d.id, d.title, d.type, d.priority, d.origin, d.destination, d.custom1, d.custom2, d.remarks, d.status, d.currentOffice, d.createdBy, d.createdAt]);
+    
+    const logSheet = ss.getSheetByName("TrackingLogs");
+    logSheet.appendRow(["LOG-" + Date.now(), d.id, d.origin, "CREATED & ROUTED", d.createdBy, "Routed to " + d.destination, d.createdAt]);
+    return jsonResponse({ status: "success", trackingId: d.id });
+  }
+
+  // 3. Scan QR & Log Office Action
+  if (action === "scanDocument") {
+    const s = payload.scan;
+    const logSheet = ss.getSheetByName("TrackingLogs");
+    logSheet.appendRow(["LOG-" + Date.now(), s.trackingId, s.office, s.actionStatus, s.handledBy, s.remarks, s.timestamp]);
+
+    // Update Document Status & Current Office
+    const docSheet = ss.getSheetByName("Documents");
+    const data = docSheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === s.trackingId) {
+        const newStatus = (s.actionStatus === "COMPLETED" || s.actionStatus === "RETURNED") ? s.actionStatus : "IN TRANSIT";
+        docSheet.getRange(i + 1, 10).setValue(newStatus);
+        docSheet.getRange(i + 1, 11).setValue(s.office);
+        break;
+      }
+    }
+    return jsonResponse({ status: "success" });
+  }
+
+  // 4. Add User (Protected by Hidden Admin Code)
+  if (action === "addUser") {
+    if (payload.adminCode !== ADMIN_SECRET_CODE) {
+      return jsonResponse({ status: "unauthorized", message: "Invalid Admin Code" });
+    }
+    const u = payload.user;
+    const userSheet = ss.getSheetByName("Users");
+    userSheet.appendRow([u.id, u.name, u.office, u.role || "Officer", new Date().toISOString()]);
+    return jsonResponse({ status: "success" });
+  }
+
+  return jsonResponse({ status: "error", message: "Invalid action" });
+}
+
+function sheetToObjects(sheet) {
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return [];
+  const headers = data[0];
+  return data.slice(1).map(row => {
+    let obj = {};
+    headers.forEach((h, i) => obj[h] = row[i]);
+    return obj;
+  });
+}
+
+function jsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}</pre>
+                    </div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MOBILE BOTTOM NAVIGATION BAR (Google Material Bar) -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-1.5 flex items-center justify-around z-30 no-print">
+        <button onclick="switchTab('dashboard')" id="mnav-dashboard" class="mnav-btn flex flex-col items-center py-1 px-3 rounded-2xl text-gblue">
+            <i class="ph-duotone ph-folders text-2xl"></i>
+            <span class="text-[10px] font-semibold mt-0.5">Track</span>
+        </button>
+        <button onclick="switchTab('create')" id="mnav-create" class="mnav-btn flex flex-col items-center py-1 px-3 rounded-2xl text-gray-500">
+            <i class="ph-duotone ph-file-plus text-2xl"></i>
+            <span class="text-[10px] font-semibold mt-0.5">Create</span>
+        </button>
+        <button onclick="switchTab('scan')" id="mnav-scan" class="mnav-btn flex flex-col items-center py-1 px-3 rounded-2xl text-gray-500">
+            <div class="w-11 h-8 rounded-full bg-gblue text-white flex items-center justify-center shadow-sm">
+                <i class="ph-bold ph-qr-code text-lg"></i>
+            </div>
+            <span class="text-[10px] font-semibold mt-0.5 text-gblue">Scan QR</span>
+        </button>
+        <button onclick="switchTab('admin')" id="mnav-admin" class="mnav-btn flex flex-col items-center py-1 px-3 rounded-2xl text-gray-500">
+            <i class="ph-duotone ph-shield-check text-2xl"></i>
+            <span class="text-[10px] font-semibold mt-0.5">Admin</span>
+        </button>
+    </nav>
+
+    <!-- DOCUMENT TIMELINE & PRINT SLIP MODAL -->
+    <div id="doc-detail-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 hidden items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-3xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden google-shadow">
+            <div class="p-5 border-b border-gray-100 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <span id="modal-doc-id" class="px-3 py-1 rounded-full bg-gblue-light text-gblue font-mono font-bold text-xs">DOC-2026-0000</span>
+                    <span id="modal-doc-status" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold">IN TRANSIT</span>
+                </div>
+                <button onclick="closeDocModal()" class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500">
+                    <i class="ph-bold ph-x text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-5 sm:p-6 overflow-y-auto space-y-6">
+                <div>
+                    <h3 id="modal-doc-title" class="font-display font-bold text-xl text-gray-900">Document Title</h3>
+                    <p id="modal-doc-meta" class="text-xs text-gray-500 mt-1">Originating Office • Created Date</p>
+                </div>
+
+                <!-- Route Visual Stepper -->
+                <div class="bg-gsurface p-4 rounded-2xl border border-gray-200/80">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4 flex items-center gap-1.5">
+                        <i class="ph-bold ph-git-commit text-gblue"></i> Live QR Scan Routing History
+                    </h4>
+                    <div id="modal-timeline-list" class="space-y-4 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-gray-100 bg-gray-50 flex flex-wrap items-center justify-between gap-2">
+                <button onclick="loadDocToPrintSlip()" class="px-4 py-2.5 rounded-xl bg-white border border-gray-300 hover:bg-gray-50 text-xs font-semibold text-gray-700 flex items-center gap-1.5 transition">
+                    <i class="ph-bold ph-printer text-gblue"></i> View / Print QR Routing Slip
+                </button>
+                <button onclick="scanThisModalDoc()" class="px-4 py-2.5 rounded-xl bg-gblue hover:bg-gblue-dark text-white text-xs font-semibold flex items-center gap-1.5 transition">
+                    <i class="ph-bold ph-qr-code"></i> Receive / Scan Now
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TEMPLATE CUSTOMIZER MODAL (Lets user adapt the tracking form template to their exact office sheet) -->
+    <div id="template-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 hidden items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 google-shadow">
+            <div class="flex items-center justify-between">
+                <h3 class="font-display font-bold text-lg text-gray-800">Customize Form Template</h3>
+                <button onclick="closeTemplateCustomizer()" class="text-gray-400 hover:text-gray-600"><i class="ph-bold ph-x text-lg"></i></button>
+            </div>
+            <p class="text-xs text-gray-500">Match the printable QR slip headers and custom fields to your office's official tracking template.</p>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Organization / Header Title</label>
+                    <input type="text" id="cfg-org-name" value="OFFICE DOCUMENT TRACKING FORM" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-gray-600 mb-1">Form Subtitle / Control Number</label>
+                    <input type="text" id="cfg-form-code" value="Form No. DTS-2026-REV1 • Scan QR Code at Every Receiving Station" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs">
+                </div>
+                <div class="grid grid-cols-2 gap-2.5">
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Custom Field 1 Label</label>
+                        <input type="text" id="cfg-field-1" value="Reference / PR No." class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-600 mb-1">Custom Field 2 Label</label>
+                        <input type="text" id="cfg-field-2" value="Attachments / Pages" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs">
+                    </div>
+                </div>
+            </div>
+            <div class="pt-2 flex justify-end gap-2">
+                <button onclick="saveTemplateConfig()" class="px-5 py-2.5 rounded-xl bg-gblue text-white text-xs font-semibold hover:bg-gblue-dark transition">Apply to Template</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- OFFICIAL SEAL LOGO UPLOADER MODAL (Optional Exact Image File Override) -->
+    <div id="logo-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 hidden items-center justify-center p-4 no-print">
+        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 google-shadow">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-gblue-light text-gblue flex items-center justify-center">
+                        <i class="ph-duotone ph-seal-check text-xl"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-display font-bold text-base text-gray-800">Official DepEd Seal Logos</h3>
+                        <p class="text-[11px] text-gray-500">Built-in vector seals or upload your image files</p>
+                    </div>
+                </div>
+                <button onclick="closeLogoCustomizer()" class="text-gray-400 hover:text-gray-600"><i class="ph-bold ph-x text-lg"></i></button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div class="p-3.5 rounded-2xl bg-gsurface border border-gray-200 space-y-2">
+                    <label class="block font-bold text-gray-700">1. Top Header Seal (Kagawaran ng Edukasyon Seal)</label>
+                    <input type="file" accept="image/*" onchange="handleSealUpload(event, 'deped')" class="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gblue-light file:text-gblue hover:file:bg-gblue/20"/>
+                </div>
+
+                <div class="p-3.5 rounded-2xl bg-gsurface border border-gray-200 space-y-2">
+                    <label class="block font-bold text-gray-700">2. Bottom Footer Logo (Division of Agusan del Norte Seal)</label>
+                    <input type="file" accept="image/*" onchange="handleSealUpload(event, 'adn')" class="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gblue-light file:text-gblue hover:file:bg-gblue/20"/>
+                </div>
+            </div>
+
+            <div class="pt-2 flex items-center justify-between">
+                <button onclick="resetDefaultVectorSeals()" class="px-3.5 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold transition">
+                    Restore Built-in Vector Seals
+                </button>
+                <button onclick="closeLogoCustomizer()" class="px-5 py-2 rounded-xl bg-gblue text-white text-xs font-semibold hover:bg-gblue-dark transition">
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast-container" class="fixed bottom-20 md:bottom-6 right-4 z-50 flex flex-col gap-2 no-print"></div>
+
+    <script>
+        /*************************************************************************
+         * APPLICATION STATE & INITIALIZATION
+         *************************************************************************/
+        const DEFAULT_ADMIN_CODE = "ADMIN-2026"; // Validated against GAS backend when connected
+        let currentTab = 'dashboard';
+        let currentStatusFilter = 'ALL';
+        let searchQuery = '';
+        let draftTrackingId = 'DOC-2026-8841';
+        let activeModalDocId = null;
+        let activeScannedDocId = null;
+        let html5QrScanner = null;
+        let isAdminUnlocked = false;
+        let unlockedAdminSecret = "";
+
+        // GAS Endpoint URL (Can be set in Admin settings)
+        let gasWebAppUrl = "";
+
+        // Initial Users & Receiving Offices
+        let usersList = [
+            { id: 'USR-01', name: 'Maria Santos', office: 'Records Section', role: 'Receiving Officer' },
+            { id: 'USR-02', name: 'Dr. Roberto Lim', office: 'Curriculum Implementation Division (CID)', role: 'Chief ES' },
+            { id: 'USR-03', name: 'Atty. Clara Reyes', office: 'Office of the Schools Division Superintendent (OSDS)', role: 'Legal Officer' },
+            { id: 'USR-04', name: 'Carlo Mendoza', office: 'Accounting & Budget Unit', role: 'Accountant' },
+            { id: 'USR-05', name: 'Engr. Elena Gomez', office: 'School Governance & Operations Division (SGOD)', role: 'SGOD Chief' }
+        ];
+
+        let activeUser = usersList[0];
+
+        const DEPED_COL_1 = [
+            "Advise Order",
+            "Agency Procurement Request (APR)",
+            "Alternative Work Arrangement (AWA)",
+            "Annual Procurement Plan (APP)",
+            "Appointment",
+            "Application for Leave (Form 6)",
+            "Budget Execution Documents (BED)",
+            "Certificate of Payment (COP)",
+            "Contract Agreement Form",
+            "Division Clearance",
+            "Division / Office Memorandum / Advisory / Bulletin",
+            "Fidelity Bond",
+            "Letter on:",
+            "Others:"
+        ];
+
+        const DEPED_COL_2 = [
+            "Inspection & Acceptance Report (IAR)",
+            "Inspection Report (Repairs / Maintenance)",
+            "Job Order Contract",
+            "Memorandum of Agreement",
+            "Memorandum of Understanding",
+            "Monthly Payroll Worksheet & Report of Service (Form 7)",
+            "Notice of Award (NOA)",
+            "Notice to Proceed (NTP)",
+            "Notice of Salary Adjustment / Increment",
+            "Permit to",
+            "Petty Cash Voucher",
+            "Program of Works (POW)"
+        ];
+
+        const DEPED_COL_3 = [
+            "Project Procurement Management Plan (PPMP)",
+            "Provident Loan Application",
+            "Purchase Order (PO)",
+            "Purchase Request (PR)",
+            "Statement of Work Accomplishment (SWA)",
+            "Training / Activity Design / Proposal",
+            "Transfer Order",
+            "Travel Authority (TA)",
+            "Trip Ticket",
+            "VAT Certification",
+            "Vehicle Request Form",
+            "Work & Financial Plan (WFP)"
+        ];
+
+        const ALL_DEPED_DOC_TYPES = [...DEPED_COL_1, ...DEPED_COL_2, ...DEPED_COL_3];
+
+        // Sample Documents with rich QR routing history
+        let documentsList = [
+            {
+                id: 'DOC-2026-1042',
+                title: 'Division Rollout of MATATAG Curriculum Training Proposal',
+                startParty: 'Dr. Roberto Lim (CID)',
+                type: 'Training / Activity Design / Proposal, Purchase Request (PR)',
+                selectedTypes: ['Training / Activity Design / Proposal', 'Purchase Request (PR)'],
+                dvOptions: { dv: false, ca: false, dp: false, reimb: false, others: '' },
+                fillIns: { letterOn: '', permitTo: '', others: '' },
+                priority: 'URGENT',
+                origin: 'CURRICULUM IMPLEMENTATION DIVISION',
+                destination: 'Accounting & Budget Unit',
+                custom1: 'CID-2026-099',
+                custom2: '',
+                remarks: 'For budget allocation and SDS approval.',
+                status: 'IN TRANSIT',
+                currentOffice: 'Accounting & Budget Unit',
+                createdBy: 'Dr. Roberto Lim',
+                createdAt: '2026-10-14 09:15 AM'
+            },
+            {
+                id: 'DOC-2026-1039',
+                title: 'Cash Advance for Regional Science Fair',
+                startParty: 'Butuan Central Elementary School',
+                type: 'Disbursement Voucher (DV) [Cash Advance], Travel Authority (TA)',
+                selectedTypes: ['Travel Authority (TA)'],
+                dvOptions: { dv: true, ca: true, dp: false, reimb: false, others: '' },
+                fillIns: { letterOn: '', permitTo: '', others: '' },
+                priority: 'NORMAL',
+                origin: 'BUTUAN CENTRAL DISTRICT',
+                destination: 'Office of the Schools Division Superintendent (OSDS)',
+                custom1: 'DV-2026-14',
+                custom2: '',
+                remarks: 'For signature and approval of Travel Authority.',
+                status: 'IN TRANSIT',
+                currentOffice: 'Office of the Schools Division Superintendent (OSDS)',
+                createdBy: 'Maria Santos',
+                createdAt: '2026-10-13 02:30 PM'
+            },
+            {
+                id: 'DOC-2026-1018',
+                title: 'Inspection & Acceptance of School IT Packages',
+                startParty: 'Engr. Elena Gomez (SGOD)',
+                type: 'Inspection & Acceptance Report (IAR), Purchase Order (PO)',
+                selectedTypes: ['Inspection & Acceptance Report (IAR)', 'Purchase Order (PO)'],
+                dvOptions: { dv: true, ca: false, dp: true, reimb: false, others: '' },
+                fillIns: { letterOn: '', permitTo: '', others: '' },
+                priority: 'NORMAL',
+                origin: 'SCHOOL GOVERNANCE & OPERATIONS DIVISION',
+                destination: 'Records Section',
+                custom1: 'IAR-2026-441',
+                custom2: 'Released & Completed',
+                remarks: 'Direct payment cleared and archived.',
+                status: 'COMPLETED',
+                currentOffice: 'Records Section',
+                createdBy: 'Engr. Elena Gomez',
+                createdAt: '2026-10-11 11:05 AM'
+            }
+        ];
+
+        let trackingLogs = [
+            { logId: 'L-1', trackingId: 'DOC-2026-1042', office: 'CURRICULUM IMPLEMENTATION DIVISION', action: 'CREATED & ROUTED', handledBy: 'Dr. Roberto Lim', remarks: 'Forwarded to Accounting & Budget Unit', timestamp: '2026-10-14 09:15 AM' },
+            { logId: 'L-2', trackingId: 'DOC-2026-1042', office: 'Accounting & Budget Unit', action: 'RECEIVED', handledBy: 'Carlo Mendoza', remarks: 'QR Scanned. Verifying allotment availability.', timestamp: '2026-10-14 10:02 AM' },
+
+            { logId: 'L-3', trackingId: 'DOC-2026-1039', office: 'Records Section', action: 'CREATED & ROUTED', handledBy: 'Maria Santos', remarks: 'Encoded & routed to OSDS.', timestamp: '2026-10-13 02:30 PM' },
+            { logId: 'L-4', trackingId: 'DOC-2026-1039', office: 'Office of the Schools Division Superintendent (OSDS)', action: 'RECEIVED', handledBy: 'Atty. Clara Reyes', remarks: 'Received for SDS signature.', timestamp: '2026-10-14 09:20 AM' },
+
+            { logId: 'L-7', trackingId: 'DOC-2026-1018', office: 'School Governance & Operations Division (SGOD)', action: 'CREATED & ROUTED', handledBy: 'Engr. Elena Gomez', remarks: 'Submitted IAR and PO.', timestamp: '2026-10-11 11:05 AM' },
+            { logId: 'L-8', trackingId: 'DOC-2026-1018', office: 'Accounting & Budget Unit', action: 'RECEIVED', handledBy: 'Carlo Mendoza', remarks: 'Audited and cleared.', timestamp: '2026-10-11 01:40 PM' },
+            { logId: 'L-9', trackingId: 'DOC-2026-1018', office: 'Records Section', action: 'COMPLETED', handledBy: 'Maria Santos', remarks: 'Check released and archived.', timestamp: '2026-10-12 04:15 PM' }
+        ];
+
+        /*************************************************************************
+         * NAVIGATION & VIEW CONTROLLER
+         *************************************************************************/
+        function switchTab(tabId) {
+            currentTab = tabId;
+            ['dashboard', 'create', 'scan', 'admin'].forEach(id => {
+                const sec = document.getElementById(`view-${id}`);
+                if (sec) sec.classList.toggle('hidden', id !== tabId);
+
+                // Desktop Nav Highlight
+                const dBtn = document.getElementById(`nav-${id}`);
+                if (dBtn) {
+                    if (id === tabId) {
+                        dBtn.className = "nav-btn w-full flex items-center justify-center lg:justify-start gap-3.5 px-4 py-3 rounded-full text-sm font-semibold bg-gblue-light text-gblue transition-all";
+                    } else {
+                        dBtn.className = "nav-btn w-full flex items-center justify-center lg:justify-start gap-3.5 px-4 py-3 rounded-full text-sm font-medium text-gray-600 hover:bg-gray-100 transition-all";
+                    }
+                }
+
+                // Mobile Nav Highlight
+                const mBtn = document.getElementById(`mnav-${id}`);
+                if (mBtn && id !== 'scan') {
+                    mBtn.className = id === tabId
+                        ? "mnav-btn flex flex-col items-center py-1 px-3 rounded-2xl text-gblue"
+                        : "mnav-btn flex flex-col items-center py-1 px-3 rounded-2xl text-gray-500";
+                }
+            });
+
+            if (tabId !== 'scan') {
+                stopCameraScanner();
+            } else {
+                populateSimulatorDropdown();
+            }
+
+            if (tabId === 'create') {
+                updateLiveTemplatePreview();
+            }
+            if (tabId === 'dashboard') {
+                renderDashboard();
+            }
+            if (tabId === 'admin') {
+                renderAdminUsers();
+            }
+        }
+
+        /*************************************************************************
+         * ACTIVE USER & OFFICE POPULATION
+         *************************************************************************/
+        function populateUserAndOfficeSelectors() {
+            const desktopSelect = document.getElementById('active-user-select');
+            const mobileSelect = document.getElementById('mobile-user-select');
+
+            const optionsHtml = usersList.map(u =>
+                `<option value="${u.id}" ${u.id === activeUser.id ? 'selected' : ''}>${u.office} — ${u.name}</option>`
+            ).join('');
+
+            if (desktopSelect) desktopSelect.innerHTML = optionsHtml;
+            if (mobileSelect) mobileSelect.innerHTML = optionsHtml;
+
+            // Populate distinct offices for document creation destination
+            const offices = [...new Set(usersList.map(u => u.office))];
+            const destSelect = document.getElementById('doc-destination');
+
+            if (destSelect) {
+                destSelect.innerHTML = offices.map((o, idx) => `<option value="${o}" ${idx === 0 ? 'selected' : ''}>${o}</option>`).join('');
+            }
+
+            const scanOp = document.getElementById('scan-current-operator');
+            if (scanOp) scanOp.textContent = `${activeUser.office} (${activeUser.name})`;
+        }
+
+        function handleActiveUserChange(userId) {
+            const found = usersList.find(u => u.id === userId);
+            if (found) {
+                activeUser = found;
+                populateUserAndOfficeSelectors();
+                updateLiveTemplatePreview();
+                showToast(`Switched active station: ${activeUser.office}`, 'info');
+            }
+        }
+
+        function regenerateDraftId() {
+            const rand = Math.floor(1000 + Math.random() * 9000);
+            draftTrackingId = `DOC-2026-${rand}`;
+            updateLiveTemplatePreview();
+        }
+
+        function setFilterStatus(status) {
+            currentStatusFilter = status;
+            ['ALL', 'IN TRANSIT', 'COMPLETED', 'RETURNED'].forEach(st => {
+                const chip = document.getElementById(`chip-${st}`);
+                if (chip) {
+                    chip.className = (st === status)
+                        ? "filter-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-gblue text-white transition"
+                        : "filter-chip px-4 py-1.5 rounded-full text-xs font-semibold bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 transition";
+                }
+            });
+            renderDashboard();
+        }
+
+        function handleSearch(val) {
+            searchQuery = (val || '').trim().toLowerCase();
+            renderDashboard();
+        }
+
+        function renderDashboard() {
+            // Update Top Summary Metrics
+            document.getElementById('stat-total').textContent = documentsList.length;
+            document.getElementById('stat-transit').textContent = documentsList.filter(d => d.status === 'IN TRANSIT').length;
+            document.getElementById('stat-completed').textContent = documentsList.filter(d => d.status === 'COMPLETED').length;
+            document.getElementById('stat-urgent').textContent = documentsList.filter(d => d.priority === 'URGENT' && d.status !== 'COMPLETED').length;
+
+            const filtered = documentsList.filter(doc => {
+                if (currentStatusFilter === 'URGENT') {
+                    if (doc.priority !== 'URGENT') return false;
+                } else if (currentStatusFilter !== 'ALL' && doc.status !== currentStatusFilter) {
+                    return false;
+                }
+                if (searchQuery) {
+                    const hay = `${doc.id} ${doc.title} ${doc.origin} ${doc.currentOffice} ${doc.type}`.toLowerCase();
+                    return hay.includes(searchQuery);
+                }
+                return true;
+            });
+
+            const grid = document.getElementById('documents-grid');
+            if (!grid) return;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full bg-white rounded-3xl border border-gray-200/80 p-10 text-center space-y-2">
+                        <i class="ph-duotone ph-folder-open text-4xl text-gray-300"></i>
+                        <p class="text-sm font-semibold text-gray-700">No matching documents found</p>
+                        <p class="text-xs text-gray-400">Create a new Transaction Tracking Slip or adjust your filter.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(doc => {
+                const badgeClass = doc.status === 'COMPLETED'
+                    ? 'bg-ggreen-light text-ggreen'
+                    : (doc.status === 'RETURNED' ? 'bg-gred-light text-gred' : 'bg-gyellow-light text-gyellow-dark');
+                const urgentBadge = doc.priority === 'URGENT'
+                    ? `<span class="px-2 py-0.5 rounded-full bg-gred-light text-gred text-[10px] font-bold">URGENT</span>`
+                    : '';
+
+                return `
+                    <div onclick="openDocModal('${doc.id}')" class="cursor-pointer bg-white rounded-3xl border border-gray-200/80 p-5 google-card-hover flex flex-col justify-between gap-4">
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between gap-2">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-1 rounded-lg bg-gblue-light text-gblue font-mono font-bold text-xs">${escapeHtml(doc.id)}</span>
+                                    ${urgentBadge}
+                                </div>
+                                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${badgeClass}">${escapeHtml(doc.status)}</span>
+                            </div>
+                            <h4 class="font-display font-bold text-base text-gray-800 line-clamp-2">${escapeHtml(doc.title)}</h4>
+                            <p class="text-xs text-gray-500 line-clamp-1"><strong class="text-gray-600">Type:</strong> ${escapeHtml(doc.type)}</p>
+                        </div>
+
+                        <div class="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                            <div class="flex items-center gap-1.5 truncate">
+                                <i class="ph-duotone ph-map-pin text-gblue text-base"></i>
+                                <span class="font-medium text-gray-700 truncate">${escapeHtml(doc.currentOffice)}</span>
+                            </div>
+                            <span class="text-[11px] text-gray-400 shrink-0">${escapeHtml(doc.createdAt)}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderDocTypesFormCheckboxes() {
+            const grid = document.getElementById('doc-types-checkbox-grid');
+            if (!grid) return;
+            grid.innerHTML = ALL_DEPED_DOC_TYPES.map((item, idx) => `
+                <label class="flex items-start gap-2 px-2 py-1 rounded-lg hover:bg-white cursor-pointer transition">
+                    <input type="checkbox" name="deped-doc-type" value="${escapeHtml(item)}" id="dtype-${idx}" onchange="updateLiveTemplatePreview()" class="mt-0.5 rounded text-gblue focus:ring-gblue">
+                    <span class="text-gray-700 leading-tight">${escapeHtml(item)}</span>
+                </label>
+            `).join('');
+        }
+
+        function syncFillInCheckbox(typeName, textVal) {
+            const checkboxes = document.querySelectorAll('input[name="deped-doc-type"]');
+            checkboxes.forEach(cb => {
+                if (cb.value === typeName) {
+                    cb.checked = !!textVal.trim();
+                }
+            });
+            updateLiveTemplatePreview();
+        }
+
+        function clearCheckedDocTypes() {
+            document.querySelectorAll('input[name="deped-doc-type"]').forEach(cb => cb.checked = false);
+            ['chk-dv', 'chk-dv-ca', 'chk-dv-dp', 'chk-dv-reimb', 'chk-dv-others'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.checked = false;
+            });
+            ['txt-dv-others', 'txt-letter-on', 'txt-permit-to', 'txt-doc-others'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            updateLiveTemplatePreview();
+        }
+
+        function formatNowTimestamp() {
+            const now = new Date();
+            return now.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) + ' ' +
+                   now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function renderQrCodeToContainer(trackingId) {
+            const container = document.getElementById('qrcode-container');
+            if (!container) return;
+            container.innerHTML = '';
+            new QRCode(container, {
+                text: trackingId,
+                width: 60,
+                height: 60,
+                colorDark: "#000000",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+
+        function syncTemplateTitleInput(val) {
+            const formTitleInput = document.getElementById('doc-title');
+            if (formTitleInput && formTitleInput.value !== val) {
+                formTitleInput.value = val;
+            }
+        }
+
+        function updateLiveTemplatePreview(docOverride = null) {
+            const id = docOverride ? docOverride.id : draftTrackingId;
+            const origin = docOverride ? docOverride.origin : (document.getElementById('doc-origin')?.value || activeUser.office);
+            const docTitleDetails = docOverride ? docOverride.title : (document.getElementById('doc-title')?.value || '');
+            const startParty = docOverride
+                ? (docOverride.startParty || `${docOverride.createdBy} (${docOverride.origin})`)
+                : (document.getElementById('doc-start-party')?.value.trim() || `${activeUser.name} (${activeUser.office})`);
+            const priority = docOverride ? docOverride.priority : (document.getElementById('doc-priority')?.value || 'NORMAL');
+            const endNote = docOverride ? (docOverride.custom2 || '') : (document.getElementById('doc-end-note')?.value || '');
+            const remarks = docOverride ? docOverride.remarks : (document.getElementById('doc-remarks')?.value || 'For appropriate action');
+            const createdDate = docOverride ? docOverride.createdAt : formatNowTimestamp();
+
+            // Gather Checked Document Types
+            let selectedTypes = [];
+            if (docOverride && docOverride.selectedTypes) {
+                selectedTypes = docOverride.selectedTypes;
+            } else {
+                selectedTypes = Array.from(document.querySelectorAll('input[name="deped-doc-type"]:checked')).map(cb => cb.value);
+            }
+
+            // Gather DV options
+            const dvOpts = (docOverride && docOverride.dvOptions) ? docOverride.dvOptions : {
+                dv: document.getElementById('chk-dv')?.checked || false,
+                ca: document.getElementById('chk-dv-ca')?.checked || false,
+                dp: document.getElementById('chk-dv-dp')?.checked || false,
+                reimb: document.getElementById('chk-dv-reimb')?.checked || false,
+                others: document.getElementById('txt-dv-others')?.value || ''
+            };
+
+            const fillIns = (docOverride && docOverride.fillIns) ? docOverride.fillIns : {
+                letterOn: document.getElementById('txt-letter-on')?.value || '',
+                permitTo: document.getElementById('txt-permit-to')?.value || '',
+                others: document.getElementById('txt-doc-others')?.value || ''
+            };
+
+            const setText = (elId, val) => {
+                const el = document.getElementById(elId);
+                if (el) el.textContent = val;
+            };
+
+            // Update Header & Origin safely
+            setText('tpl-tracking-id', id);
+            setText('tpl-origin', origin);
+            const tplDetailsInput = document.getElementById('tpl-doc-details-input');
+            if (tplDetailsInput && document.activeElement !== tplDetailsInput) {
+                tplDetailsInput.value = docTitleDetails;
+            }
+            setText('tpl-start-party', startParty);
+            setText('tpl-end-party', endNote);
+            setText('tpl-priority-badge', priority);
+
+            // Update DV Checkboxes safely
+            setText('box-dv', (dvOpts.dv || dvOpts.ca || dvOpts.dp || dvOpts.reimb || dvOpts.others) ? '✓' : '');
+            setText('box-dv-ca', dvOpts.ca ? '✓' : '');
+            setText('box-dv-dp', dvOpts.dp ? '✓' : '');
+            setText('box-dv-reimb', dvOpts.reimb ? '✓' : '');
+            setText('box-dv-others', dvOpts.others ? '✓' : '');
+            setText('tpl-dv-others', dvOpts.others);
+
+            // Render the 3-Column Document Type Checkboxes
+            const renderColItem = (label) => {
+                const isChecked = selectedTypes.includes(label);
+                let extraLine = '';
+                if (label === 'Letter on:') {
+                    extraLine = `<span class="inline-block border-b border-black min-w-[75px] px-1 font-semibold">${escapeHtml(fillIns.letterOn)}</span>`;
+                } else if (label === 'Others:') {
+                    extraLine = `<span class="inline-block border-b border-black min-w-[85px] px-1 font-semibold">${escapeHtml(fillIns.others)}</span>`;
+                } else if (label === 'Permit to') {
+                    extraLine = `<span class="inline-block border-b border-black min-w-[70px] px-1 font-semibold">${escapeHtml(fillIns.permitTo)}</span>`;
+                }
+                return `
+                    <div class="flex items-start gap-1.5 py-[1px]">
+                        <span class="inline-flex items-center justify-center w-3 h-3 border border-black text-[9px] font-bold shrink-0 mt-0.5 leading-none">${isChecked ? '✓' : ''}</span>
+                        <span class="leading-tight">${escapeHtml(label)} ${extraLine}</span>
+                    </div>
+                `;
+            };
+
+            const colsContainer = document.getElementById('tpl-doc-types-columns');
+            if (colsContainer) {
+                colsContainer.innerHTML = `
+                    <div class="space-y-0.5">${DEPED_COL_1.map(renderColItem).join('')}</div>
+                    <div class="space-y-0.5">${DEPED_COL_2.map(renderColItem).join('')}</div>
+                    <div class="space-y-0.5">${DEPED_COL_3.map(renderColItem).join('')}</div>
+                `;
+            }
+
+            renderQrCodeToContainer(id);
+
+            // Build 14-Row Routing Table matching DATE/TIME FORWARDED | OFFICE / UNIT | SIGNATURE / DATE | ACTION TAKEN
+            const existingLogs = trackingLogs.filter(l => l.trackingId === id);
+            let rowsHtml = '';
+            const totalRows = 14;
+
+            for (let i = 0; i < totalRows; i++) {
+                const log = existingLogs[i];
+                if (log) {
+                    rowsHtml += `
+                        <tr class="h-6">
+                            <td class="border border-black px-1.5 py-0.5 text-center font-mono text-[9.5px]">${escapeHtml(log.timestamp)}</td>
+                            <td class="border border-black px-1.5 py-0.5 font-semibold text-[10px]">${escapeHtml(log.office)}</td>
+                            <td class="border border-black px-1.5 py-0.5 text-center text-[9.5px]">${escapeHtml(log.handledBy)}</td>
+                            <td class="border border-black px-1.5 py-0.5 text-[9.5px]"><strong>${escapeHtml(log.action)}:</strong> ${escapeHtml(log.remarks)}</td>
+                        </tr>
+                    `;
+                } else if (i === 0 && !docOverride) {
+                    rowsHtml += `
+                        <tr class="h-6">
+                            <td class="border border-black px-1.5 py-0.5 text-center font-mono text-[9.5px]">${createdDate}</td>
+                            <td class="border border-black px-1.5 py-0.5 font-semibold text-[10px]">${escapeHtml(origin)}</td>
+                            <td class="border border-black px-1.5 py-0.5 text-center text-[9.5px]">${escapeHtml(activeUser.name)}</td>
+                            <td class="border border-black px-1.5 py-0.5 text-[9.5px]">${escapeHtml(remarks)}</td>
+                        </tr>
+                    `;
+                } else {
+                    rowsHtml += `
+                        <tr class="h-6">
+                            <td class="border border-black px-1.5 py-0.5"></td>
+                            <td class="border border-black px-1.5 py-0.5"></td>
+                            <td class="border border-black px-1.5 py-0.5"></td>
+                            <td class="border border-black px-1.5 py-0.5"></td>
+                        </tr>
+                    `;
+                }
+            }
+            document.getElementById('tpl-routing-rows').innerHTML = rowsHtml;
+        }
+
+        async function handleCreateDocument(e) {
+            e.preventDefault();
+            const nowStr = formatNowTimestamp();
+
+            const selectedTypes = Array.from(document.querySelectorAll('input[name="deped-doc-type"]:checked')).map(cb => cb.value);
+            const dvOpts = {
+                dv: document.getElementById('chk-dv')?.checked || false,
+                ca: document.getElementById('chk-dv-ca')?.checked || false,
+                dp: document.getElementById('chk-dv-dp')?.checked || false,
+                reimb: document.getElementById('chk-dv-reimb')?.checked || false,
+                others: document.getElementById('txt-dv-others')?.value.trim() || ''
+            };
+            const fillIns = {
+                letterOn: document.getElementById('txt-letter-on')?.value.trim() || '',
+                permitTo: document.getElementById('txt-permit-to')?.value.trim() || '',
+                others: document.getElementById('txt-doc-others')?.value.trim() || ''
+            };
+
+            let summaryTypeParts = [...selectedTypes];
+            if (dvOpts.dv || dvOpts.ca || dvOpts.dp || dvOpts.reimb || dvOpts.others) {
+                summaryTypeParts.unshift('Disbursement Voucher (DV)');
+            }
+            const combinedTypeStr = summaryTypeParts.length > 0 ? summaryTypeParts.join(', ') : 'Official Transaction';
+
+            const startPartyVal = document.getElementById('doc-start-party')?.value.trim() || `${activeUser.name} (${activeUser.office})`;
+
+            const newDoc = {
+                id: draftTrackingId,
+                title: document.getElementById('doc-title').value.trim(),
+                startParty: startPartyVal,
+                type: combinedTypeStr,
+                selectedTypes: selectedTypes,
+                dvOptions: dvOpts,
+                fillIns: fillIns,
+                priority: document.getElementById('doc-priority').value,
+                origin: document.getElementById('doc-origin').value.trim(),
+                destination: document.getElementById('doc-destination').value,
+                custom1: startPartyVal,
+                custom2: document.getElementById('doc-end-note').value.trim() || '',
+                remarks: document.getElementById('doc-remarks').value.trim() || 'Forwarded for appropriate action.',
+                status: 'IN TRANSIT',
+                currentOffice: document.getElementById('doc-origin').value.trim(),
+                createdBy: activeUser.name,
+                createdAt: nowStr
+            };
+
+            const initialLog = {
+                logId: 'LOG-' + Date.now(),
+                trackingId: newDoc.id,
+                office: newDoc.origin,
+                action: 'FORWARDED',
+                handledBy: activeUser.name,
+                remarks: `${newDoc.remarks} (To: ${newDoc.destination})`,
+                timestamp: nowStr
+            };
+
+            documentsList.unshift(newDoc);
+            trackingLogs.push(initialLog);
+
+            // Sync with Google Apps Script if URL configured
+            if (gasWebAppUrl) {
+                try {
+                    await fetch(gasWebAppUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'createDocument', document: newDoc })
+                    });
+                } catch (err) {
+                    console.warn("GAS Sync warning:", err);
+                }
+            }
+
+            updateLiveTemplatePreview(newDoc);
+            showToast(`Registered ${newDoc.id}! Ready to Print Transaction Slip.`, 'success');
+
+            // Reset form for next entry while keeping generated preview visible for printing
+            document.getElementById('doc-title').value = '';
+            const startInput = document.getElementById('doc-start-party');
+            if (startInput) startInput.value = '';
+            document.getElementById('doc-remarks').value = '';
+            document.getElementById('doc-end-note').value = '';
+            clearCheckedDocTypes();
+            regenerateDraftId();
+            updateLiveTemplatePreview(newDoc);
+        }
+
+        /*************************************************************************
+         * QR SCANNER (CAMERA + INSTANT SIMULATION)
+         *************************************************************************/
+        function populateSimulatorDropdown() {
+            const sel = document.getElementById('simulate-qr-select');
+            if (!sel) return;
+            sel.innerHTML = `<option value="">⚡ Select a document to simulate scan...</option>` +
+                documentsList.map(d => `<option value="${d.id}">${d.id} — ${escapeHtml(d.title.substring(0, 38))}...</option>`).join('');
+        }
+
+        function startCameraScanner() {
+            const placeholder = document.getElementById('camera-placeholder');
+            const btnStart = document.getElementById('btn-start-camera');
+            const btnStop = document.getElementById('btn-stop-camera');
+
+            if (placeholder) placeholder.classList.add('hidden');
+            btnStart.classList.add('hidden');
+            btnStop.classList.remove('hidden');
+
+            html5QrScanner = new Html5Qrcode("qr-reader");
+            html5QrScanner.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 220, height: 220 } },
+                (decodedText) => {
+                    stopCameraScanner();
+                    processScannedCode(decodedText.trim());
+                },
+                () => {}
+            ).catch(err => {
+                showToast("Camera unavailable on this device/browser. Use Instant Simulate or Manual Lookup below.", "warning");
+                stopCameraScanner();
+            });
+        }
+
+        function stopCameraScanner() {
+            const placeholder = document.getElementById('camera-placeholder');
+            const btnStart = document.getElementById('btn-start-camera');
+            const btnStop = document.getElementById('btn-stop-camera');
+
+            if (html5QrScanner) {
+                html5QrScanner.stop().then(() => {
+                    html5QrScanner.clear();
+                    html5QrScanner = null;
+                }).catch(() => {});
+            }
+            if (placeholder) placeholder.classList.remove('hidden');
+            if (btnStart) btnStart.classList.remove('hidden');
+            if (btnStop) btnStop.classList.add('hidden');
+        }
+
+        function triggerManualScan() {
+            const input = document.getElementById('manual-scan-input');
+            if (!input || !input.value.trim()) return;
+            processScannedCode(input.value.trim().toUpperCase());
+        }
+
+        function processScannedCode(code) {
+            const doc = documentsList.find(d => d.id.toUpperCase() === code.toUpperCase());
+            if (!doc) {
+                showToast(`No document found matching QR code: ${code}`, 'error');
+                return;
+            }
+
+            activeScannedDocId = doc.id;
+            document.getElementById('scan-doc-id').textContent = doc.id;
+            document.getElementById('scan-doc-title').textContent = doc.title;
+            document.getElementById('scan-doc-meta').textContent = `Origin: ${doc.origin} • Current Station: ${doc.currentOffice} • Status: ${doc.status}`;
+            document.getElementById('scan-current-operator').textContent = `${activeUser.office} (${activeUser.name})`;
+            document.getElementById('scan-remarks').value = '';
+
+            const panel = document.getElementById('scanned-action-panel');
+            panel.classList.remove('hidden');
+            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            showToast(`QR Code Verified: ${doc.id}`, 'success');
+        }
+
+        function closeScannedPanel() {
+            activeScannedDocId = null;
+            document.getElementById('scanned-action-panel').classList.add('hidden');
+        }
+
+        async function submitScanAction(e) {
+            e.preventDefault();
+            if (!activeScannedDocId) return;
+
+            const doc = documentsList.find(d => d.id === activeScannedDocId);
+            if (!doc) return;
+
+            const selectedAction = document.querySelector('input[name="scan-action"]:checked').value;
+            const remarks = document.getElementById('scan-remarks').value.trim() || `Processed(${selectedAction}) at ${activeUser.office}`;
+            const nowStr = formatNowTimestamp();
+
+            // Update Document Status & Current Office
+            doc.currentOffice = activeUser.office;
+            if (selectedAction === 'COMPLETED' || selectedAction === 'RETURNED') {
+                doc.status = selectedAction;
+            } else {
+                doc.status = 'IN TRANSIT';
+            }
+
+            const scanEntry = {
+                logId: 'LOG-' + Date.now(),
+                trackingId: doc.id,
+                office: activeUser.office,
+                action: selectedAction,
+                handledBy: activeUser.name,
+                remarks: remarks,
+                timestamp: nowStr
+            };
+            trackingLogs.push(scanEntry);
+
+            if (gasWebAppUrl) {
+                try {
+                    await fetch(gasWebAppUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'scanDocument',
+                            scan: {
+                                trackingId: doc.id,
+                                office: activeUser.office,
+                                actionStatus: selectedAction,
+                                handledBy: activeUser.name,
+                                remarks: remarks,
+                                timestamp: nowStr
+                            }
+                        })
+                    });
+                } catch (err) {
+                    console.warn("GAS Scan Sync Warning:", err);
+                }
+            }
+
+            closeScannedPanel();
+            showToast(`Updated ${doc.id} → ${selectedAction} by ${activeUser.office}`, 'success');
+            openDocModal(doc.id);
+        }
+
+        /*************************************************************************
+         * DOCUMENT TIMELINE DETAIL MODAL
+         *************************************************************************/
+        function openDocModal(docId) {
+            const doc = documentsList.find(d => d.id === docId);
+            if (!doc) return;
+            activeModalDocId = docId;
+
+            document.getElementById('modal-doc-id').textContent = doc.id;
+            document.getElementById('modal-doc-title').textContent = doc.title;
+            document.getElementById('modal-doc-meta').textContent = `${doc.type} • Origin: ${doc.origin} • Created ${doc.createdAt}`;
+
+            const statusEl = document.getElementById('modal-doc-status');
+            statusEl.textContent = doc.status;
+            statusEl.className = doc.status === 'COMPLETED'
+                ? 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-ggreen-light text-ggreen'
+                : (doc.status === 'RETURNED' ? 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gred-light text-gred' : 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gyellow-light text-gyellow-dark');
+
+            const logs = trackingLogs.filter(l => l.trackingId === docId);
+            const timelineContainer = document.getElementById('modal-timeline-list');
+
+            timelineContainer.innerHTML = logs.map((l, idx) => {
+                const isLatest = idx === logs.length - 1;
+                const dotColor = isLatest ? 'bg-gblue ring-4 ring-gblue/20' : 'bg-ggreen';
+                return `
+                    <div class="relative pl-9">
+                        <div class="w-3.5 h-3.5 rounded-full ${dotColor} absolute left-2 top-1"></div>
+                        <div class="bg-white p-3.5 rounded-2xl border border-gray-200/80 shadow-xs">
+                            <div class="flex flex-wrap items-center justify-between gap-1">
+                                <span class="text-xs font-bold text-gray-900">${escapeHtml(l.office)} — <span class="text-gblue">${escapeHtml(l.action)}</span></span>
+                                <span class="text-[11px] font-mono text-gray-400">${escapeHtml(l.timestamp)}</span>
+                            </div>
+                            <p class="text-xs text-gray-600 mt-1">${escapeHtml(l.remarks)}</p>
+                            <p class="text-[11px] text-gray-400 mt-1">Handled by: <strong class="text-gray-700">${escapeHtml(l.handledBy)}</strong></p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const modal = document.getElementById('doc-detail-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeDocModal() {
+            const modal = document.getElementById('doc-detail-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function loadDocToPrintSlip() {
+            const doc = documentsList.find(d => d.id === activeModalDocId);
+            if (!doc) return;
+            closeDocModal();
+            switchTab('create');
+            updateLiveTemplatePreview(doc);
+            showToast(`Loaded ${doc.id} into Printable Slip Preview`, 'info');
+        }
+
+        function scanThisModalDoc() {
+            const id = activeModalDocId;
+            closeDocModal();
+            switchTab('scan');
+            processScannedCode(id);
+        }
+
+        /*************************************************************************
+         * TEMPLATE CUSTOMIZER
+         *************************************************************************/
+        function openTemplateCustomizer() {
+            const m = document.getElementById('template-modal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+        function closeTemplateCustomizer() {
+            const m = document.getElementById('template-modal');
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+        }
+
+        function saveTemplateConfig() {
+            const orgName = document.getElementById('cfg-org-name').value.trim() || 'OFFICE DOCUMENT TRACKING FORM';
+            const formCode = document.getElementById('cfg-form-code').value.trim();
+            const f1 = document.getElementById('cfg-field-1').value.trim() || 'Reference No.';
+            const f2 = document.getElementById('cfg-field-2').value.trim() || 'Attachments';
+
+            document.getElementById('tpl-org-name').textContent = orgName;
+            document.getElementById('tpl-form-code').textContent = formCode;
+            document.getElementById('lbl-custom-1').textContent = f1;
+            document.getElementById('lbl-custom-2').textContent = f2;
+            document.getElementById('tpl-lbl-custom1').textContent = f1.toUpperCase() + ':';
+            document.getElementById('tpl-lbl-custom2').textContent = f2.toUpperCase() + ':';
+
+            closeTemplateCustomizer();
+            showToast('Tracking Form Template updated!', 'success');
+        }
+
+        /*************************************************************************
+         * OFFICIAL DEPED & AGUSAN DEL NORTE SEAL CUSTOMIZER
+         *************************************************************************/
+        function openLogoCustomizer() {
+            const m = document.getElementById('logo-modal');
+            m.classList.remove('hidden');
+            m.classList.add('flex');
+        }
+
+        function closeLogoCustomizer() {
+            const m = document.getElementById('logo-modal');
+            m.classList.add('hidden');
+            m.classList.remove('flex');
+        }
+
+        function handleSealUpload(event, sealType) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const dataUrl = e.target.result;
+                if (sealType === 'deped') {
+                    localStorage.setItem('custom_deped_seal', dataUrl);
+                } else {
+                    localStorage.setItem('custom_adn_seal', dataUrl);
+                }
+                applySavedSeals();
+                showToast('Official Seal Image embedded onto Tracking Slip!', 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function applySavedSeals() {
+            const depedData = localStorage.getItem('custom_deped_seal');
+            const adnData = localStorage.getItem('custom_adn_seal');
+
+            const depedImg = document.getElementById('custom-deped-seal-img');
+            const depedSvg = document.getElementById('default-deped-seal-svg');
+            if (depedData && depedImg && depedSvg) {
+                depedImg.src = depedData;
+                depedImg.classList.remove('hidden');
+                depedSvg.classList.add('hidden');
+            } else if (depedImg && depedSvg) {
+                depedImg.classList.add('hidden');
+                depedSvg.classList.remove('hidden');
+            }
+
+            const adnImg = document.getElementById('custom-adn-seal-img');
+            const adnSvg = document.getElementById('default-adn-seal-svg');
+            if (adnData && adnImg && adnSvg) {
+                adnImg.src = adnData;
+                adnImg.classList.remove('hidden');
+                adnSvg.classList.add('hidden');
+            } else if (adnImg && adnSvg) {
+                adnImg.classList.add('hidden');
+                adnSvg.classList.remove('hidden');
+            }
+        }
+
+        function resetDefaultVectorSeals() {
+            localStorage.removeItem('custom_deped_seal');
+            localStorage.removeItem('custom_adn_seal');
+            applySavedSeals();
+            showToast('Restored built-in vector DepEd & ADN seals', 'info');
+        }
+
+        /*************************************************************************
+         * ADMIN SETTINGS, BACKEND CODE VERIFICATION & USER MANAGEMENT
+         *************************************************************************/
+        async function verifyAdminAccess(e) {
+            e.preventDefault();
+            const codeInput = document.getElementById('admin-passcode-input').value.trim();
+
+            if (gasWebAppUrl) {
+                try {
+                    const res = await fetch(gasWebAppUrl, {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'verifyAdmin', adminCode: codeInput })
+                    });
+                    const data = await res.json();
+                    if (data.valid) {
+                        unlockAdminUI(codeInput);
+                        return;
+                    } else {
+                        showToast('Invalid Admin Code rejected by Google Apps Script backend', 'error');
+                        return;
+                    }
+                } catch (err) {
+                    // Fallback if CORS preflight blocks read in sandbox
+                }
+            }
+
+            if (codeInput === DEFAULT_ADMIN_CODE) {
+                unlockAdminUI(codeInput);
+            } else {
+                showToast('Invalid Admin Passcode!', 'error');
+            }
+        }
+
+        function unlockAdminUI(secret) {
+            isAdminUnlocked = true;
+            unlockedAdminSecret = secret;
+            document.getElementById('admin-lock-screen').classList.add('hidden');
+            document.getElementById('admin-console-content').classList.remove('hidden');
+            document.getElementById('admin-passcode-input').value = '';
+            renderAdminUsers();
+            showToast('Admin Console Unlocked', 'success');
+        }
+
+        function lockAdminConsole() {
+            isAdminUnlocked = false;
+            unlockedAdminSecret = "";
+            document.getElementById('admin-lock-screen').classList.remove('hidden');
+            document.getElementById('admin-console-content').classList.add('hidden');
+        }
+
+        function renderAdminUsers() {
+            const container = document.getElementById('admin-users-list');
+            if (!container) return;
+            container.innerHTML = usersList.map(u => `
+                <div class="flex items-center justify-between p-3 rounded-2xl bg-gsurface border border-gray-200/60">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-gblue-light text-gblue font-bold text-xs flex items-center justify-center">
+                            ${escapeHtml(u.name.split(' ').map(n => n[0]).join('').substring(0,2))}
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-gray-800">${escapeHtml(u.name)}</p>
+                            <p class="text-[11px] text-gray-500">${escapeHtml(u.office)}</p>
+                        </div>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-[10px] font-mono text-gray-500">${u.id}</span>
+                </div>
+            `).join('');
+        }
+
+        async function handleAddUser(e) {
+            e.preventDefault();
+            const nameEl = document.getElementById('new-user-name');
+            const officeEl = document.getElementById('new-user-office');
+            const newUser = {
+                id: 'USR-0' + (usersList.length + 1),
+                name: nameEl.value.trim(),
+                office: officeEl.value.trim(),
+                role: 'Officer'
+            };
+
+            usersList.push(newUser);
+            populateUserAndOfficeSelectors();
+            renderAdminUsers();
+
+            if (gasWebAppUrl) {
+                try {
+                    await fetch(gasWebAppUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        body: JSON.stringify({
+                            action: 'addUser',
+                            adminCode: unlockedAdminSecret,
+                            user: newUser
+                        })
+                    });
+                } catch (err) {}
+            }
+
+            nameEl.value = '';
+            officeEl.value = '';
+            showToast(`Added ${newUser.name} (${newUser.office})`, 'success');
+        }
+
+        function saveGasConnection() {
+            const url = document.getElementById('gas-webapp-url').value.trim();
+            if (!url) {
+                showToast('Please enter a valid Google Apps Script Web App URL', 'warning');
+                return;
+            }
+            gasWebAppUrl = url;
+            document.getElementById('conn-label').textContent = 'Google Sheet Live';
+            document.getElementById('mobile-conn-text').textContent = '● GAS Cloud Connected';
+            showToast('Connected to Google Apps Script Web App!', 'success');
+            syncWithBackend();
+        }
+
+        function clearGasConnection() {
+            gasWebAppUrl = '';
+            document.getElementById('gas-webapp-url').value = '';
+            document.getElementById('conn-label').textContent = 'Local Demo DB';
+            document.getElementById('mobile-conn-text').textContent = '● Active Ready';
+            showToast('Switched to Local Demo Database', 'info');
+        }
+
+        async function syncWithBackend() {
+            const icon = document.getElementById('sync-icon');
+            if (icon) icon.classList.add('animate-spin');
+
+            if (gasWebAppUrl) {
+                try {
+                    const response = await fetch(`${gasWebAppUrl}?action=getAll`);
+                    const data = await response.json();
+                    if (data && data.status === 'success') {
+                        if (data.documents?.length) {
+                            documentsList = data.documents.map(d => ({
+                                id: d.TrackingID,
+                                title: d.Title,
+                                type: d.Type,
+                                priority: d.Priority,
+                                origin: d.OriginOffice,
+                                destination: d.DestinationOffice,
+                                custom1: d.Custom1,
+                                custom2: d.Custom2,
+                                remarks: d.Remarks,
+                                status: d.Status,
+                                currentOffice: d.CurrentOffice,
+                                createdBy: d.CreatedBy,
+                                createdAt: d.CreatedAt
+                            }));
+                        }
+                        if (data.logs?.length) {
+                            trackingLogs = data.logs.map(l => ({
+                                logId: l.LogID,
+                                trackingId: l.TrackingID,
+                                office: l.Office,
+                                action: l.Action,
+                                handledBy: l.HandledBy,
+                                remarks: l.Remarks,
+                                timestamp: l.Timestamp
+                            }));
+                        }
+                        renderDashboard();
+                        showToast('Synced latest records from Google Sheets!', 'success');
+                    }
+                } catch (err) {
+                    showToast('Synced local state (Verify CORS/Anyone access on GAS URL)', 'info');
+                }
+            } else {
+                setTimeout(() => {
+                    renderDashboard();
+                    showToast('Workspace state synchronized', 'info');
+                }, 350);
+            }
+
+            setTimeout(() => {
+                if (icon) icon.classList.remove('animate-spin');
+            }, 500);
+        }
+
+        function copyGasBackendCode() {
+            const codeText = document.getElementById('gas-code-block').innerText;
+            const temp = document.createElement('textarea');
+            temp.value = codeText;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            showToast('Copied Google Apps Script (Code.gs) to clipboard!', 'success');
+        }
+
+        /*************************************************************************
+         * UTILITIES (TOASTS & ESCAPING)
+         *************************************************************************/
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            let colors = 'bg-gray-900 text-white';
+            let icon = 'ph-info text-gblue';
+            if (type === 'success') { icon = 'ph-check-circle text-ggreen'; }
+            if (type === 'error') { icon = 'ph-warning-octagon text-gred'; }
+            if (type === 'warning') { icon = 'ph-warning text-gyellow'; }
+
+            toast.className = `${colors} px-4 py-3 rounded-2xl shadow-lg flex items-center gap-2.5 text-xs font-medium max-w-xs transition-all duration-300`;
+            toast.innerHTML = `<i class="ph-fill ${icon} text-lg shrink-0"></i><span>${escapeHtml(message)}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str).replace(/[&<>"']/g, m => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[m]));
+        }
+
+        // Initialize on Window Load
+        window.onload = function () {
+            populateUserAndOfficeSelectors();
+            renderDocTypesFormCheckboxes();
+            applySavedSeals();
+            switchTab('dashboard');
+            updateLiveTemplatePreview();
+        };
+    </script>
+</body>
+</html>
