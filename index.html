@@ -132,10 +132,10 @@
         <div class="space-y-3 pt-4 border-t border-gray-100">
             <div class="px-3 py-2.5 rounded-2xl bg-gray-50 border border-gray-200/60">
                 <div class="flex items-center gap-2.5">
-                    <div id="conn-dot" class="w-2.5 h-2.5 rounded-full bg-ggreen animate-pulse shrink-0"></div>
+                    <div id="conn-dot" class="w-2.5 h-2.5 rounded-full bg-gyellow shrink-0"></div>
                     <div class="hidden lg:block overflow-hidden">
-                        <p id="conn-label" class="text-xs font-semibold text-gray-700 truncate">Local Demo DB</p>
-                        <p class="text-[10px] text-gray-400 truncate">Ready for GAS Sync</p>
+                        <p id="conn-label" class="text-xs font-semibold text-gray-700 truncate">Not Connected</p>
+                        <p id="conn-sublabel" class="text-[10px] text-gray-400 truncate">Set GAS URL in Admin</p>
                     </div>
                 </div>
             </div>
@@ -163,7 +163,7 @@
                 </div>
                 <div>
                     <h1 class="font-display font-bold text-base text-gray-800 leading-tight">DocTrack</h1>
-                    <p id="mobile-conn-text" class="text-[10px] text-ggreen font-medium">● Active Ready</p>
+                    <p id="mobile-conn-text" class="text-[10px] text-gyellow-dark font-medium">● Setup Required</p>
                 </div>
             </div>
 
@@ -700,7 +700,7 @@
                             </div>
                         </div>
 
-                        <!-- Manual Tracking ID Entry / Quick Demo Scan -->
+                        <!-- Manual Tracking ID Entry / Quick Lookup -->
                         <div class="mt-4 pt-4 border-t border-gray-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                                 <label class="block text-[11px] font-semibold uppercase text-gray-400 mb-1">Manual Tracking ID Lookup</label>
@@ -711,9 +711,9 @@
                             </div>
 
                             <div>
-                                <label class="block text-[11px] font-semibold uppercase text-gray-400 mb-1">Simulate QR Scan (Instant Test)</label>
+                                <label class="block text-[11px] font-semibold uppercase text-gray-400 mb-1">Select Active Registered Document</label>
                                 <select id="simulate-qr-select" onchange="if(this.value) { processScannedCode(this.value); this.value=''; }" class="w-full px-3 py-2 rounded-xl border border-gblue/40 bg-gblue-light/40 text-xs font-medium text-gblue-dark focus:outline-none">
-                                    <option value="">⚡ Select a document to simulate scan...</option>
+                                    <option value="">Select a registered document...</option>
                                 </select>
                             </div>
                         </div>
@@ -796,21 +796,27 @@
             <!-- VIEW 4: ADMIN SETTINGS & GOOGLE APPS SCRIPT BACKEND -->
             <section id="view-admin" class="hidden space-y-6 no-print">
 
-                <!-- Admin Lock Screen (Verified against Backend / Pre-registered Admin Code) -->
+                <!-- Admin Lock Screen (Verified against Backend) -->
                 <div id="admin-lock-screen" class="max-w-md mx-auto bg-white rounded-3xl border border-gray-200/80 p-6 sm:p-8 text-center google-shadow my-8">
                     <div class="w-16 h-16 rounded-2xl bg-gred-light text-gred mx-auto flex items-center justify-center mb-4">
                         <i class="ph-duotone ph-lock-key text-3xl"></i>
                     </div>
                     <h2 class="font-display font-bold text-xl text-gray-800">Admin Authentication</h2>
-                    <p class="text-xs text-gray-500 mt-1 mb-6">Enter the pre-registered backend Admin Passcode to manage users, offices, and Google Sheet integration.</p>
+                    <p class="text-xs text-gray-500 mt-1 mb-5">Connect your Google Apps Script Web App URL and enter your Admin Passcode to unlock the console.</p>
 
-                    <form onsubmit="verifyAdminAccess(event)" class="space-y-4">
-                        <input type="password" id="admin-passcode-input" required placeholder="Enter Admin Code" class="w-full px-4 py-3 rounded-2xl border border-gray-300 text-center font-mono text-base tracking-widest focus:outline-none focus:border-gblue focus:ring-2 focus:ring-gblue/20">
-                        <button type="submit" class="w-full py-3 rounded-2xl bg-gblue hover:bg-gblue-dark text-white font-display font-semibold text-sm shadow-sm transition">
-                            Unlock Admin Console
+                    <form onsubmit="verifyAdminAccess(event)" class="space-y-3.5 text-left">
+                        <div>
+                            <label class="block text-[11px] font-semibold uppercase text-gray-500 mb-1">Google Apps Script Web App URL</label>
+                            <input type="url" id="lock-gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs font-mono focus:outline-none focus:border-gblue">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-semibold uppercase text-gray-500 mb-1">Admin Passcode</label>
+                            <input type="password" id="admin-passcode-input" required placeholder="Enter Admin Passcode" class="w-full px-4 py-3 rounded-2xl border border-gray-300 text-center font-mono text-base tracking-widest focus:outline-none focus:border-gblue focus:ring-2 focus:ring-gblue/20">
+                        </div>
+                        <button type="submit" id="btn-unlock-admin" class="w-full py-3 rounded-2xl bg-gblue hover:bg-gblue-dark text-white font-display font-semibold text-sm shadow-sm transition">
+                            Verify & Unlock Admin Console
                         </button>
                     </form>
-                    <p class="text-[11px] text-gray-400 mt-4">Default Pre-registered Backend Code for Demo: <code class="font-mono bg-gray-100 px-1.5 py-0.5 rounded text-gray-700">ADMIN-2026</code></p>
                 </div>
 
                 <!-- Unlocked Admin Dashboard -->
@@ -822,28 +828,35 @@
                             </div>
                             <div>
                                 <h2 class="font-display font-bold text-lg text-gray-800">Administrator Console</h2>
-                                <p class="text-xs text-gray-500">Manage Offices/Users, Google Apps Script Connection & Backend Code</p>
+                                <p class="text-xs text-gray-500">Manage Google Sheet Database, Offices/Users, Permanent Logos & Admin Passcode</p>
                             </div>
                         </div>
-                        <button onclick="lockAdminConsole()" class="px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-700 flex items-center gap-1.5 transition">
-                            <i class="ph-bold ph-lock"></i> Lock Console
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <a id="btn-open-sheet" href="#" target="_blank" rel="noopener noreferrer" class="hidden px-4 py-2 rounded-full bg-ggreen text-white text-xs font-semibold items-center gap-1.5 shadow-2xs hover:bg-ggreen-dark transition">
+                                <i class="ph-bold ph-table"></i> Open Google Sheet Database
+                            </a>
+                            <button onclick="lockAdminConsole()" class="px-4 py-2 rounded-full bg-gray-100 hover:bg-gray-200 text-xs font-semibold text-gray-700 flex items-center gap-1.5 transition">
+                                <i class="ph-bold ph-lock"></i> Lock Console
+                            </button>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                         <!-- User & Receiving Office Management (6 cols) -->
                         <div class="lg:col-span-6 bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-5">
-                            <div class="flex items-center gap-2.5">
-                                <i class="ph-duotone ph-users-three text-2xl text-gblue"></i>
-                                <div>
-                                    <h3 class="font-display font-bold text-base text-gray-800">Registered Users & Receiving Offices</h3>
-                                    <p class="text-xs text-gray-500">Add personnel who can create or scan documents</p>
+                            <div class="flex items-center justify-between gap-2.5">
+                                <div class="flex items-center gap-2.5">
+                                    <i class="ph-duotone ph-users-three text-2xl text-gblue"></i>
+                                    <div>
+                                        <h3 class="font-display font-bold text-base text-gray-800">Registered Users & Receiving Offices</h3>
+                                        <p class="text-xs text-gray-500">Saved directly to the "Users" tab in your Google Sheet</p>
+                                    </div>
                                 </div>
                             </div>
 
                             <form onsubmit="handleAddUser(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 bg-gsurface p-3.5 rounded-2xl border border-gray-200/70">
                                 <input type="text" id="new-user-name" required placeholder="Full Name (e.g. Juan Cruz)" class="sm:col-span-5 px-3 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-gblue">
-                                <input type="text" id="new-user-office" required placeholder="Office / Division (e.g. Accounting)" class="sm:col-span-4 px-3 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-gblue">
+                                <input type="text" id="new-user-office" required placeholder="Office / Unit (e.g. CID)" class="sm:col-span-4 px-3 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-gblue">
                                 <button type="submit" class="sm:col-span-3 py-2 px-3 rounded-xl bg-gblue text-white text-xs font-semibold hover:bg-gblue-dark flex items-center justify-center gap-1 transition">
                                     <i class="ph-bold ph-user-plus"></i> Add User
                                 </button>
@@ -854,39 +867,62 @@
                             </div>
                         </div>
 
-                        <!-- Google Sheet & Apps Script Web App Connection (6 cols) -->
-                        <div class="lg:col-span-6 bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-5">
-                            <div class="flex items-center gap-2.5">
-                                <i class="ph-duotone ph-cloud-check text-2xl text-ggreen"></i>
-                                <div>
-                                    <h3 class="font-display font-bold text-base text-gray-800">Google Sheets & Apps Script Endpoint</h3>
-                                    <p class="text-xs text-gray-500">Connect this frontend to your deployed Google Apps Script Web App URL</p>
+                        <!-- Google Sheet & Apps Script Web App Connection + Password Changer (6 cols) -->
+                        <div class="lg:col-span-6 space-y-6">
+                            <!-- Database Connection Card -->
+                            <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-4">
+                                <div class="flex items-center gap-2.5">
+                                    <i class="ph-duotone ph-database text-2xl text-ggreen"></i>
+                                    <div>
+                                        <h3 class="font-display font-bold text-base text-gray-800">Google Sheets Database Connection</h3>
+                                        <p class="text-xs text-gray-500">Connect and initialize your Google Sheet tabs</p>
+                                    </div>
+                                </div>
+
+                                <div class="space-y-3">
+                                    <div>
+                                        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Google Apps Script Web App URL (/exec)</label>
+                                        <input type="url" id="gas-webapp-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs font-mono focus:outline-none focus:border-gblue">
+                                    </div>
+
+                                    <div class="flex flex-wrap gap-2">
+                                        <button onclick="saveGasConnection()" class="px-4 py-2.5 rounded-xl bg-ggreen hover:bg-ggreen-dark text-white text-xs font-semibold flex items-center gap-1.5 transition">
+                                            <i class="ph-bold ph-plugs-connected"></i> Connect & Initialize Sheets
+                                        </button>
+                                        <button onclick="openLogoCustomizer()" class="px-4 py-2.5 rounded-xl bg-gblue-light text-gblue hover:bg-gblue/20 text-xs font-semibold flex items-center gap-1.5 transition">
+                                            <i class="ph-bold ph-seal-check"></i> Embed Permanent Logos
+                                        </button>
+                                    </div>
+
+                                    <div id="sheet-link-box" class="hidden p-3 rounded-2xl bg-ggreen-light/60 border border-ggreen/30 flex items-center justify-between gap-2">
+                                        <div class="text-xs text-gray-800 truncate">
+                                            <span class="font-bold text-ggreen-dark block">● Connected to Google Sheet Database</span>
+                                            <span id="sheet-url-display" class="text-[11px] font-mono text-gray-600 truncate block"></span>
+                                        </div>
+                                        <a id="sheet-direct-link" href="#" target="_blank" rel="noopener noreferrer" class="shrink-0 px-3 py-1.5 rounded-xl bg-ggreen text-white text-xs font-semibold hover:bg-ggreen-dark transition">
+                                            Open Sheet ↗
+                                        </a>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="space-y-3">
-                                <div>
-                                    <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Google Apps Script Web App URL</label>
-                                    <input type="url" id="gas-webapp-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs font-mono focus:outline-none focus:border-gblue">
+                            <!-- Change Admin Password Card -->
+                            <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-4">
+                                <div class="flex items-center gap-2.5">
+                                    <i class="ph-duotone ph-key text-2xl text-gyellow-dark"></i>
+                                    <div>
+                                        <h3 class="font-display font-bold text-base text-gray-800">Change Admin Passcode</h3>
+                                        <p class="text-xs text-gray-500">Updates your hidden passcode in Google Apps Script Properties</p>
+                                    </div>
                                 </div>
 
-                                <div class="flex flex-wrap gap-2">
-                                    <button onclick="saveGasConnection()" class="px-4 py-2.5 rounded-xl bg-ggreen hover:bg-ggreen-dark text-white text-xs font-semibold flex items-center gap-1.5 transition">
-                                        <i class="ph-bold ph-floppy-disk"></i> Save & Connect Backend
+                                <form onsubmit="handleChangeAdminPassword(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                                    <input type="password" id="cp-current" required placeholder="Current Passcode" class="px-3 py-2 rounded-xl border border-gray-300 text-xs font-mono focus:outline-none focus:border-gblue">
+                                    <input type="password" id="cp-new" required placeholder="New Passcode" class="px-3 py-2 rounded-xl border border-gray-300 text-xs font-mono focus:outline-none focus:border-gblue">
+                                    <button type="submit" class="py-2 px-3 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                                        <i class="ph-bold ph-check"></i> Update Passcode
                                     </button>
-                                    <button onclick="clearGasConnection()" class="px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold transition">
-                                        Use Local Demo Mode
-                                    </button>
-                                </div>
-
-                                <div class="p-3.5 rounded-2xl bg-gblue-light/50 border border-gblue/20 text-xs text-gray-700 space-y-1">
-                                    <p class="font-semibold text-gblue-dark flex items-center gap-1.5">
-                                        <i class="ph-fill ph-info"></i> How Admin Security Works:
-                                    </p>
-                                    <p class="text-[11px] leading-relaxed">
-                                        The pre-registered Admin Code (<code class="font-mono font-bold">ADMIN_SECRET_CODE</code>) is stored exclusively inside your Google Apps Script backend (<code class="font-mono">Code.gs</code>) so it is completely hidden from client source code.
-                                    </p>
-                                </div>
+                                </form>
                             </div>
                         </div>
                     </div>
@@ -895,9 +931,15 @@
                     <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-4">
                         <div class="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                                <span class="px-2.5 py-1 rounded-full bg-gyellow-light text-gyellow-dark font-bold text-[10px] uppercase tracking-wider">Backend Script</span>
-                                <h3 class="font-display font-bold text-base text-gray-800 mt-1">Google Apps Script (`Code.gs`) for Google Sheets</h3>
-                                <p class="text-xs text-gray-500">1. Open a new Google Sheet → 2. Click <strong>Extensions > Apps Script</strong> → 3. Paste this code & click <strong>Deploy > New Deployment > Web App (Anyone)</strong>.</p>
+                                <span class="px-2.5 py-1 rounded-full bg-gyellow-light text-gyellow-dark font-bold text-[10px] uppercase tracking-wider">Required Backend Setup</span>
+                                <h3 class="font-display font-bold text-base text-gray-800 mt-1">Google Apps Script (`Code.gs`) — Bound to Your Google Sheet</h3>
+                                <ol class="text-xs text-gray-600 list-decimal list-inside space-y-0.5 mt-1">
+                                    <li>Open your Google Sheet (or create a new blank one at <a href="https://sheets.new" target="_blank" class="text-gblue underline font-semibold">sheets.new</a>).</li>
+                                    <li>In the top menu, click <strong>Extensions &gt; Apps Script</strong>.</li>
+                                    <li>Replace all code in <code>Code.gs</code> with the script below and click <strong>Save (💾)</strong>.</li>
+                                    <li>Select <strong><code>setupSheets</code></strong> in the top toolbar dropdown and click <strong>Run</strong> once to authorize &amp; immediately create your 4 database tabs (<code>Documents</code>, <code>TrackingLogs</code>, <code>Users</code>, <code>Settings</code>).</li>
+                                    <li>Click <strong>Deploy &gt; New deployment &gt; Web app</strong> (Execute as: <em>Me</em>, Who has access: <em>Anyone</em>) and paste the Web App URL above.</li>
+                                </ol>
                             </div>
                             <button onclick="copyGasBackendCode()" class="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-semibold flex items-center gap-2 transition">
                                 <i class="ph-bold ph-copy"></i> Copy `Code.gs`
@@ -906,104 +948,201 @@
 
                         <pre id="gas-code-block" class="bg-gray-900 text-gray-100 p-4 rounded-2xl text-[11px] font-mono overflow-x-auto leading-relaxed max-h-96">/**
  * DOCTRACK QR - GOOGLE SHEETS & APPS SCRIPT BACKEND (Code.gs)
- * Database Sheets Auto-Created: "Documents", "TrackingLogs", "Users"
+ * IMPORTANT: Open your Google Sheet -> Extensions -> Apps Script -> Paste this code.
+ * Click "Run" on setupSheets() once to authorize and create all tabs immediately.
  */
 
-// PRE-REGISTERED HIDDEN ADMIN CODE (Stored strictly in Backend)
-const ADMIN_SECRET_CODE = "ADMIN-2026";
+const INITIAL_ADMIN_CODE = "ADMIN-2026"; // Used only on first initialization; changeable via Admin Console
+
+function getAdminCode() {
+  const props = PropertiesService.getScriptProperties();
+  let code = props.getProperty("ADMIN_SECRET_CODE");
+  if (!code) {
+    code = INITIAL_ADMIN_CODE;
+    props.setProperty("ADMIN_SECRET_CODE", code);
+  }
+  return code;
+}
 
 function setupSheets() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  
+  if (!ss) {
+    throw new Error("This script must be bound to a Google Sheet. Open a Google Sheet -> Extensions -> Apps Script.");
+  }
+
   if (!ss.getSheetByName("Documents")) {
     const docSheet = ss.insertSheet("Documents");
-    docSheet.appendRow(["TrackingID", "Title", "Type", "Priority", "OriginOffice", "DestinationOffice", "Custom1", "Custom2", "Remarks", "Status", "CurrentOffice", "CreatedBy", "CreatedAt"]);
+    docSheet.appendRow([
+      "TrackingID", "Title", "StartParty", "Type", "Priority",
+      "OriginOffice", "DestinationOffice", "EndNote", "Remarks",
+      "Status", "CurrentOffice", "CreatedBy", "CreatedAt", "MetaJSON"
+    ]);
+    docSheet.getRange("A1:N1").setFontWeight("bold").setBackground("#E8F0FE");
   }
+
   if (!ss.getSheetByName("TrackingLogs")) {
     const logSheet = ss.insertSheet("TrackingLogs");
     logSheet.appendRow(["LogID", "TrackingID", "Office", "Action", "HandledBy", "Remarks", "Timestamp"]);
+    logSheet.getRange("A1:G1").setFontWeight("bold").setBackground("#E6F4EA");
   }
+
   if (!ss.getSheetByName("Users")) {
     const userSheet = ss.insertSheet("Users");
     userSheet.appendRow(["UserID", "Name", "Office", "Role", "CreatedAt"]);
-    userSheet.appendRow(["USR-01", "Maria Santos", "Records Section", "Staff", new Date().toISOString()]);
-    userSheet.appendRow(["USR-02", "Engr. Robert Lim", "Procurement Office", "Officer", new Date().toISOString()]);
-    userSheet.appendRow(["USR-03", "Atty. Clara Reyes", "Legal Division", "Director", new Date().toISOString()]);
+    userSheet.getRange("A1:E1").setFontWeight("bold").setBackground("#FEF7E0");
+    userSheet.appendRow(["USR-01", "Records Officer", "RECORDS SECTION", "Officer", new Date().toISOString()]);
   }
+
+  if (!ss.getSheetByName("Settings")) {
+    const setSheet = ss.insertSheet("Settings");
+    setSheet.appendRow(["Key", "Value", "UpdatedAt"]);
+    setSheet.getRange("A1:C1").setFontWeight("bold").setBackground("#FCE8E6");
+  }
+
+  getAdminCode();
+  return ss.getUrl();
 }
 
 function doGet(e) {
-  setupSheets();
-  const action = e.parameter.action || "getAll";
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-  if (action === "getAll") {
+  try {
+    const sheetUrl = setupSheets();
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
     const docs = sheetToObjects(ss.getSheetByName("Documents"));
     const logs = sheetToObjects(ss.getSheetByName("TrackingLogs"));
     const users = sheetToObjects(ss.getSheetByName("Users"));
-    return jsonResponse({ status: "success", documents: docs, logs: logs, users: users });
+    const settingsRows = sheetToObjects(ss.getSheetByName("Settings"));
+    const settings = {};
+    settingsRows.forEach(r => { if (r.Key) settings[r.Key] = r.Value; });
+
+    return jsonResponse({
+      status: "success",
+      sheetUrl: sheetUrl,
+      sheetName: ss.getName(),
+      documents: docs,
+      logs: logs,
+      users: users,
+      settings: settings
+    });
+  } catch (err) {
+    return jsonResponse({ status: "error", message: err.toString() });
   }
-  return jsonResponse({ status: "error", message: "Unknown GET action" });
 }
 
 function doPost(e) {
-  setupSheets();
-  const payload = JSON.parse(e.postData.contents);
-  const action = payload.action;
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  try {
+    const sheetUrl = setupSheets();
+    const payload = JSON.parse(e.postData.contents);
+    const action = payload.action;
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const currentSecret = getAdminCode();
 
-  // 1. Verify Hidden Admin Code
-  if (action === "verifyAdmin") {
-    const isValid = (payload.adminCode === ADMIN_SECRET_CODE);
-    return jsonResponse({ status: isValid ? "success" : "unauthorized", valid: isValid });
-  }
+    // 1. Verify Admin Passcode
+    if (action === "verifyAdmin") {
+      const isValid = (String(payload.adminCode) === String(currentSecret));
+      return jsonResponse({
+        status: isValid ? "success" : "unauthorized",
+        valid: isValid,
+        sheetUrl: isValid ? sheetUrl : ""
+      });
+    }
 
-  // 2. Create Document & Initial Log
-  if (action === "createDocument") {
-    const d = payload.document;
-    const docSheet = ss.getSheetByName("Documents");
-    docSheet.appendRow([d.id, d.title, d.type, d.priority, d.origin, d.destination, d.custom1, d.custom2, d.remarks, d.status, d.currentOffice, d.createdBy, d.createdAt]);
-    
-    const logSheet = ss.getSheetByName("TrackingLogs");
-    logSheet.appendRow(["LOG-" + Date.now(), d.id, d.origin, "CREATED & ROUTED", d.createdBy, "Routed to " + d.destination, d.createdAt]);
-    return jsonResponse({ status: "success", trackingId: d.id });
-  }
-
-  // 3. Scan QR & Log Office Action
-  if (action === "scanDocument") {
-    const s = payload.scan;
-    const logSheet = ss.getSheetByName("TrackingLogs");
-    logSheet.appendRow(["LOG-" + Date.now(), s.trackingId, s.office, s.actionStatus, s.handledBy, s.remarks, s.timestamp]);
-
-    // Update Document Status & Current Office
-    const docSheet = ss.getSheetByName("Documents");
-    const data = docSheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === s.trackingId) {
-        const newStatus = (s.actionStatus === "COMPLETED" || s.actionStatus === "RETURNED") ? s.actionStatus : "IN TRANSIT";
-        docSheet.getRange(i + 1, 10).setValue(newStatus);
-        docSheet.getRange(i + 1, 11).setValue(s.office);
-        break;
+    // 2. Change Admin Passcode
+    if (action === "changeAdminPassword") {
+      if (String(payload.currentCode) !== String(currentSecret)) {
+        return jsonResponse({ status: "unauthorized", message: "Current passcode is incorrect." });
       }
+      if (!payload.newCode || String(payload.newCode).trim().length < 4) {
+        return jsonResponse({ status: "error", message: "New passcode must be at least 4 characters." });
+      }
+      PropertiesService.getScriptProperties().setProperty("ADMIN_SECRET_CODE", String(payload.newCode).trim());
+      return jsonResponse({ status: "success", message: "Admin passcode updated in backend." });
     }
-    return jsonResponse({ status: "success" });
-  }
 
-  // 4. Add User (Protected by Hidden Admin Code)
-  if (action === "addUser") {
-    if (payload.adminCode !== ADMIN_SECRET_CODE) {
-      return jsonResponse({ status: "unauthorized", message: "Invalid Admin Code" });
+    // 3. Save Permanent Logos or Settings in Google Sheet
+    if (action === "saveSettings") {
+      const setSheet = ss.getSheetByName("Settings");
+      const items = payload.settings || {};
+      const data = setSheet.getDataRange().getValues();
+
+      Object.keys(items).forEach(key => {
+        let foundRow = -1;
+        for (let i = 1; i < data.length; i++) {
+          if (data[i][0] === key) { foundRow = i + 1; break; }
+        }
+        if (foundRow > 0) {
+          setSheet.getRange(foundRow, 2).setValue(items[key]);
+          setSheet.getRange(foundRow, 3).setValue(new Date().toISOString());
+        } else {
+          setSheet.appendRow([key, items[key], new Date().toISOString()]);
+        }
+      });
+      return jsonResponse({ status: "success" });
     }
-    const u = payload.user;
-    const userSheet = ss.getSheetByName("Users");
-    userSheet.appendRow([u.id, u.name, u.office, u.role || "Officer", new Date().toISOString()]);
-    return jsonResponse({ status: "success" });
-  }
 
-  return jsonResponse({ status: "error", message: "Invalid action" });
+    // 4. Create Document & Initial Log
+    if (action === "createDocument") {
+      const d = payload.document;
+      const docSheet = ss.getSheetByName("Documents");
+      const metaJson = JSON.stringify({
+        selectedTypes: d.selectedTypes || [],
+        dvOptions: d.dvOptions || {},
+        fillIns: d.fillIns || {}
+      });
+      docSheet.appendRow([
+        d.id, d.title, d.startParty || "", d.type, d.priority,
+        d.origin, d.destination, d.custom2 || "", d.remarks,
+        d.status, d.currentOffice, d.createdBy, d.createdAt, metaJson
+      ]);
+
+      const logSheet = ss.getSheetByName("TrackingLogs");
+      logSheet.appendRow([
+        "LOG-" + Date.now(), d.id, d.origin, "FORWARDED",
+        d.createdBy, d.remarks + " (To: " + d.destination + ")", d.createdAt
+      ]);
+      return jsonResponse({ status: "success", trackingId: d.id });
+    }
+
+    // 5. Scan QR & Log Office Action
+    if (action === "scanDocument") {
+      const s = payload.scan;
+      const logSheet = ss.getSheetByName("TrackingLogs");
+      logSheet.appendRow([
+        "LOG-" + Date.now(), s.trackingId, s.office,
+        s.actionStatus, s.handledBy, s.remarks, s.timestamp
+      ]);
+
+      const docSheet = ss.getSheetByName("Documents");
+      const data = docSheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (String(data[i][0]) === String(s.trackingId)) {
+          const newStatus = (s.actionStatus === "COMPLETED" || s.actionStatus === "RETURNED") ? s.actionStatus : "IN TRANSIT";
+          docSheet.getRange(i + 1, 10).setValue(newStatus);
+          docSheet.getRange(i + 1, 11).setValue(s.office);
+          break;
+        }
+      }
+      return jsonResponse({ status: "success" });
+    }
+
+    // 6. Add User (Protected by Hidden Admin Code)
+    if (action === "addUser") {
+      if (String(payload.adminCode) !== String(currentSecret)) {
+        return jsonResponse({ status: "unauthorized", message: "Invalid Admin Code" });
+      }
+      const u = payload.user;
+      const userSheet = ss.getSheetByName("Users");
+      userSheet.appendRow([u.id, u.name, u.office, u.role || "Officer", new Date().toISOString()]);
+      return jsonResponse({ status: "success" });
+    }
+
+    return jsonResponse({ status: "error", message: "Invalid action: " + action });
+  } catch (err) {
+    return jsonResponse({ status: "error", message: err.toString() });
+  }
 }
 
 function sheetToObjects(sheet) {
+  if (!sheet) return [];
   const data = sheet.getDataRange().getValues();
   if (data.length < 2) return [];
   const headers = data[0];
@@ -1122,17 +1261,17 @@ function jsonResponse(obj) {
         </div>
     </div>
 
-    <!-- OFFICIAL SEAL LOGO UPLOADER MODAL (Optional Exact Image File Override) -->
+    <!-- OFFICIAL SEAL LOGO UPLOADER MODAL (Permanently Saves to Google Sheet + Code Embed) -->
     <div id="logo-modal" class="fixed inset-0 bg-black/50 backdrop-blur-xs z-40 hidden items-center justify-center p-4 no-print">
-        <div class="bg-white rounded-3xl max-w-md w-full p-6 space-y-4 google-shadow">
+        <div class="bg-white rounded-3xl max-w-lg w-full p-6 space-y-4 google-shadow">
             <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2.5">
                     <div class="w-9 h-9 rounded-xl bg-gblue-light text-gblue flex items-center justify-center">
                         <i class="ph-duotone ph-seal-check text-xl"></i>
                     </div>
                     <div>
-                        <h3 class="font-display font-bold text-base text-gray-800">Official DepEd Seal Logos</h3>
-                        <p class="text-[11px] text-gray-500">Built-in vector seals or upload your image files</p>
+                        <h3 class="font-display font-bold text-base text-gray-800">Permanent Official DepEd Seal Logos</h3>
+                        <p class="text-[11px] text-gray-500">Upload once — auto-compressed &amp; saved to your Google Sheet Database</p>
                     </div>
                 </div>
                 <button onclick="closeLogoCustomizer()" class="text-gray-400 hover:text-gray-600"><i class="ph-bold ph-x text-lg"></i></button>
@@ -1148,6 +1287,14 @@ function jsonResponse(obj) {
                     <label class="block font-bold text-gray-700">2. Bottom Footer Logo (Division of Agusan del Norte Seal)</label>
                     <input type="file" accept="image/*" onchange="handleSealUpload(event, 'adn')" class="block w-full text-xs text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-gblue-light file:text-gblue hover:file:bg-gblue/20"/>
                 </div>
+
+                <div class="p-3 rounded-2xl bg-gblue-light/50 border border-gblue/20 text-[11px] text-gray-700 space-y-2">
+                    <p class="font-semibold text-gblue-dark">Want to hardcode your uploaded logos directly into the HTML file?</p>
+                    <p>Once you select your 2 images above, they are automatically saved to your Google Sheet <code>Settings</code> tab AND cached locally. You can also click below to copy the `PERMANENT_LOGOS` snippet to paste into the code.</p>
+                    <button type="button" onclick="copyPermanentLogosSnippet()" class="px-3 py-1.5 rounded-xl bg-white border border-gblue/40 text-gblue font-semibold hover:bg-gblue hover:text-white transition">
+                        <i class="ph-bold ph-code"></i> Copy Permanent Logo Constants
+                    </button>
+                </div>
             </div>
 
             <div class="pt-2 flex items-center justify-between">
@@ -1155,7 +1302,7 @@ function jsonResponse(obj) {
                     Restore Built-in Vector Seals
                 </button>
                 <button onclick="closeLogoCustomizer()" class="px-5 py-2 rounded-xl bg-gblue text-white text-xs font-semibold hover:bg-gblue-dark transition">
-                    Done
+                    Save &amp; Done
                 </button>
             </div>
         </div>
@@ -1166,29 +1313,36 @@ function jsonResponse(obj) {
 
     <script>
         /*************************************************************************
-         * APPLICATION STATE & INITIALIZATION
+         * APPLICATION STATE & PERMANENT EMBEDDED CONFIG
          *************************************************************************/
-        const DEFAULT_ADMIN_CODE = "ADMIN-2026"; // Validated against GAS backend when connected
+        // If you want your logos permanently hardcoded into this HTML file, paste the output of "Copy Permanent Logo Constants" here:
+        const PERMANENT_LOGOS = {
+            depedSealDataUrl: "",
+            adnSealDataUrl: ""
+        };
+
+        let localAdminCode = localStorage.getItem('doctrack_admin_code') || "ADMIN-2026";
         let currentTab = 'dashboard';
         let currentStatusFilter = 'ALL';
         let searchQuery = '';
-        let draftTrackingId = 'DOC-2026-8841';
+        let draftTrackingId = 'DOC-2026-' + Math.floor(1000 + Math.random() * 9000);
         let activeModalDocId = null;
         let activeScannedDocId = null;
         let html5QrScanner = null;
         let isAdminUnlocked = false;
         let unlockedAdminSecret = "";
 
-        // GAS Endpoint URL (Can be set in Admin settings)
-        let gasWebAppUrl = "";
+        // Persisted Google Apps Script Web App URL & Sheet Direct Link
+        let gasWebAppUrl = localStorage.getItem('doctrack_gas_url') || "";
+        let connectedSheetUrl = localStorage.getItem('doctrack_sheet_url') || "";
 
-        // Initial Users & Receiving Offices
-        let usersList = [
-            { id: 'USR-01', name: 'Maria Santos', office: 'Records Section', role: 'Receiving Officer' },
-            { id: 'USR-02', name: 'Dr. Roberto Lim', office: 'Curriculum Implementation Division (CID)', role: 'Chief ES' },
-            { id: 'USR-03', name: 'Atty. Clara Reyes', office: 'Office of the Schools Division Superintendent (OSDS)', role: 'Legal Officer' },
-            { id: 'USR-04', name: 'Carlo Mendoza', office: 'Accounting & Budget Unit', role: 'Accountant' },
-            { id: 'USR-05', name: 'Engr. Elena Gomez', office: 'School Governance & Operations Division (SGOD)', role: 'SGOD Chief' }
+        // Users & Receiving Offices (Populated from Google Sheet or Local Registry, NO fake demo people)
+        let usersList = JSON.parse(localStorage.getItem('doctrack_users') || 'null') || [
+            { id: 'USR-01', name: 'Records Officer', office: 'RECORDS SECTION', role: 'Officer' },
+            { id: 'USR-02', name: 'CID Personnel', office: 'CURRICULUM IMPLEMENTATION DIVISION', role: 'Officer' },
+            { id: 'USR-03', name: 'SGOD Personnel', office: 'SCHOOL GOVERNANCE & OPERATIONS DIVISION', role: 'Officer' },
+            { id: 'USR-04', name: 'OSDS Personnel', office: 'OFFICE OF THE SCHOOLS DIVISION SUPERINTENDENT', role: 'Officer' },
+            { id: 'USR-05', name: 'Accounting & Budget', office: 'ACCOUNTING & BUDGET UNIT', role: 'Officer' }
         ];
 
         let activeUser = usersList[0];
@@ -1242,78 +1396,26 @@ function jsonResponse(obj) {
 
         const ALL_DEPED_DOC_TYPES = [...DEPED_COL_1, ...DEPED_COL_2, ...DEPED_COL_3];
 
-        // Sample Documents with rich QR routing history
-        let documentsList = [
-            {
-                id: 'DOC-2026-1042',
-                title: 'Division Rollout of MATATAG Curriculum Training Proposal',
-                startParty: 'Dr. Roberto Lim (CID)',
-                type: 'Training / Activity Design / Proposal, Purchase Request (PR)',
-                selectedTypes: ['Training / Activity Design / Proposal', 'Purchase Request (PR)'],
-                dvOptions: { dv: false, ca: false, dp: false, reimb: false, others: '' },
-                fillIns: { letterOn: '', permitTo: '', others: '' },
-                priority: 'URGENT',
-                origin: 'CURRICULUM IMPLEMENTATION DIVISION',
-                destination: 'Accounting & Budget Unit',
-                custom1: 'CID-2026-099',
-                custom2: '',
-                remarks: 'For budget allocation and SDS approval.',
-                status: 'IN TRANSIT',
-                currentOffice: 'Accounting & Budget Unit',
-                createdBy: 'Dr. Roberto Lim',
-                createdAt: '2026-10-14 09:15 AM'
-            },
-            {
-                id: 'DOC-2026-1039',
-                title: 'Cash Advance for Regional Science Fair',
-                startParty: 'Butuan Central Elementary School',
-                type: 'Disbursement Voucher (DV) [Cash Advance], Travel Authority (TA)',
-                selectedTypes: ['Travel Authority (TA)'],
-                dvOptions: { dv: true, ca: true, dp: false, reimb: false, others: '' },
-                fillIns: { letterOn: '', permitTo: '', others: '' },
-                priority: 'NORMAL',
-                origin: 'BUTUAN CENTRAL DISTRICT',
-                destination: 'Office of the Schools Division Superintendent (OSDS)',
-                custom1: 'DV-2026-14',
-                custom2: '',
-                remarks: 'For signature and approval of Travel Authority.',
-                status: 'IN TRANSIT',
-                currentOffice: 'Office of the Schools Division Superintendent (OSDS)',
-                createdBy: 'Maria Santos',
-                createdAt: '2026-10-13 02:30 PM'
-            },
-            {
-                id: 'DOC-2026-1018',
-                title: 'Inspection & Acceptance of School IT Packages',
-                startParty: 'Engr. Elena Gomez (SGOD)',
-                type: 'Inspection & Acceptance Report (IAR), Purchase Order (PO)',
-                selectedTypes: ['Inspection & Acceptance Report (IAR)', 'Purchase Order (PO)'],
-                dvOptions: { dv: true, ca: false, dp: true, reimb: false, others: '' },
-                fillIns: { letterOn: '', permitTo: '', others: '' },
-                priority: 'NORMAL',
-                origin: 'SCHOOL GOVERNANCE & OPERATIONS DIVISION',
-                destination: 'Records Section',
-                custom1: 'IAR-2026-441',
-                custom2: 'Released & Completed',
-                remarks: 'Direct payment cleared and archived.',
-                status: 'COMPLETED',
-                currentOffice: 'Records Section',
-                createdBy: 'Engr. Elena Gomez',
-                createdAt: '2026-10-11 11:05 AM'
-            }
-        ];
+        // Clean Production State (No fake demo documents)
+        let documentsList = JSON.parse(localStorage.getItem('doctrack_docs') || '[]');
+        let trackingLogs = JSON.parse(localStorage.getItem('doctrack_logs') || '[]');
 
-        let trackingLogs = [
-            { logId: 'L-1', trackingId: 'DOC-2026-1042', office: 'CURRICULUM IMPLEMENTATION DIVISION', action: 'CREATED & ROUTED', handledBy: 'Dr. Roberto Lim', remarks: 'Forwarded to Accounting & Budget Unit', timestamp: '2026-10-14 09:15 AM' },
-            { logId: 'L-2', trackingId: 'DOC-2026-1042', office: 'Accounting & Budget Unit', action: 'RECEIVED', handledBy: 'Carlo Mendoza', remarks: 'QR Scanned. Verifying allotment availability.', timestamp: '2026-10-14 10:02 AM' },
+        function saveStateToLocalCache() {
+            localStorage.setItem('doctrack_docs', JSON.stringify(documentsList));
+            localStorage.setItem('doctrack_logs', JSON.stringify(trackingLogs));
+            localStorage.setItem('doctrack_users', JSON.stringify(usersList));
+        }
 
-            { logId: 'L-3', trackingId: 'DOC-2026-1039', office: 'Records Section', action: 'CREATED & ROUTED', handledBy: 'Maria Santos', remarks: 'Encoded & routed to OSDS.', timestamp: '2026-10-13 02:30 PM' },
-            { logId: 'L-4', trackingId: 'DOC-2026-1039', office: 'Office of the Schools Division Superintendent (OSDS)', action: 'RECEIVED', handledBy: 'Atty. Clara Reyes', remarks: 'Received for SDS signature.', timestamp: '2026-10-14 09:20 AM' },
-
-            { logId: 'L-7', trackingId: 'DOC-2026-1018', office: 'School Governance & Operations Division (SGOD)', action: 'CREATED & ROUTED', handledBy: 'Engr. Elena Gomez', remarks: 'Submitted IAR and PO.', timestamp: '2026-10-11 11:05 AM' },
-            { logId: 'L-8', trackingId: 'DOC-2026-1018', office: 'Accounting & Budget Unit', action: 'RECEIVED', handledBy: 'Carlo Mendoza', remarks: 'Audited and cleared.', timestamp: '2026-10-11 01:40 PM' },
-            { logId: 'L-9', trackingId: 'DOC-2026-1018', office: 'Records Section', action: 'COMPLETED', handledBy: 'Maria Santos', remarks: 'Check released and archived.', timestamp: '2026-10-12 04:15 PM' }
-        ];
+        // Helper for CORS-friendly Google Apps Script POST calls
+        async function callGasBackend(payloadObj) {
+            if (!gasWebAppUrl) throw new Error("Google Apps Script URL not configured");
+            const res = await fetch(gasWebAppUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                body: JSON.stringify(payloadObj)
+            });
+            return await res.json();
+        }
 
         /*************************************************************************
          * NAVIGATION & VIEW CONTROLLER
@@ -1735,23 +1837,26 @@ function jsonResponse(obj) {
 
             documentsList.unshift(newDoc);
             trackingLogs.push(initialLog);
+            saveStateToLocalCache();
 
             // Sync with Google Apps Script if URL configured
             if (gasWebAppUrl) {
                 try {
-                    await fetch(gasWebAppUrl, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ action: 'createDocument', document: newDoc })
-                    });
+                    const res = await callGasBackend({ action: 'createDocument', document: newDoc });
+                    if (res && res.status === 'success') {
+                        showToast(`Saved ${newDoc.id} to Google Sheet Database!`, 'success');
+                    } else {
+                        showToast(`Registered ${newDoc.id} locally (Backend warning: ${res?.message || 'check deployment'})`, 'warning');
+                    }
                 } catch (err) {
                     console.warn("GAS Sync warning:", err);
+                    showToast(`Saved ${newDoc.id} locally. Click Sync Sheet when online.`, 'warning');
                 }
+            } else {
+                showToast(`Registered ${newDoc.id}! Ready to Print Transaction Slip.`, 'success');
             }
 
             updateLiveTemplatePreview(newDoc);
-            showToast(`Registered ${newDoc.id}! Ready to Print Transaction Slip.`, 'success');
 
             // Reset form for next entry while keeping generated preview visible for printing
             document.getElementById('doc-title').value = '';
@@ -1765,13 +1870,13 @@ function jsonResponse(obj) {
         }
 
         /*************************************************************************
-         * QR SCANNER (CAMERA + INSTANT SIMULATION)
+         * QR SCANNER (CAMERA + REGISTERED DOCUMENT SELECTOR)
          *************************************************************************/
         function populateSimulatorDropdown() {
             const sel = document.getElementById('simulate-qr-select');
             if (!sel) return;
-            sel.innerHTML = `<option value="">⚡ Select a document to simulate scan...</option>` +
-                documentsList.map(d => `<option value="${d.id}">${d.id} — ${escapeHtml(d.title.substring(0, 38))}...</option>`).join('');
+            sel.innerHTML = `<option value="">Select a registered document...</option>` +
+                documentsList.map(d => `<option value="${d.id}">${d.id} — ${escapeHtml(d.title.substring(0, 38))}</option>`).join('');
         }
 
         function startCameraScanner() {
@@ -1874,24 +1979,20 @@ function jsonResponse(obj) {
                 timestamp: nowStr
             };
             trackingLogs.push(scanEntry);
+            saveStateToLocalCache();
 
             if (gasWebAppUrl) {
                 try {
-                    await fetch(gasWebAppUrl, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            action: 'scanDocument',
-                            scan: {
-                                trackingId: doc.id,
-                                office: activeUser.office,
-                                actionStatus: selectedAction,
-                                handledBy: activeUser.name,
-                                remarks: remarks,
-                                timestamp: nowStr
-                            }
-                        })
+                    await callGasBackend({
+                        action: 'scanDocument',
+                        scan: {
+                            trackingId: doc.id,
+                            office: activeUser.office,
+                            actionStatus: selectedAction,
+                            handledBy: activeUser.name,
+                            remarks: remarks,
+                            timestamp: nowStr
+                        }
                     });
                 } catch (err) {
                     console.warn("GAS Scan Sync Warning:", err);
@@ -1904,43 +2005,48 @@ function jsonResponse(obj) {
         }
 
         /*************************************************************************
-         * DOCUMENT TIMELINE DETAIL MODAL
+         * DOCUMENT TIMELINE & PRINT SLIP MODAL CONTROLLER
          *************************************************************************/
         function openDocModal(docId) {
             const doc = documentsList.find(d => d.id === docId);
             if (!doc) return;
-            activeModalDocId = docId;
+            activeModalDocId = doc.id;
 
             document.getElementById('modal-doc-id').textContent = doc.id;
             document.getElementById('modal-doc-title').textContent = doc.title;
-            document.getElementById('modal-doc-meta').textContent = `${doc.type} • Origin: ${doc.origin} • Created ${doc.createdAt}`;
+            document.getElementById('modal-doc-meta').textContent = `Origin: ${doc.origin} • Type: ${doc.type} • Created: ${doc.createdAt}`;
 
-            const statusEl = document.getElementById('modal-doc-status');
-            statusEl.textContent = doc.status;
-            statusEl.className = doc.status === 'COMPLETED'
-                ? 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-ggreen-light text-ggreen'
-                : (doc.status === 'RETURNED' ? 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gred-light text-gred' : 'px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gyellow-light text-gyellow-dark');
+            const statusBadge = document.getElementById('modal-doc-status');
+            statusBadge.textContent = doc.status;
+            statusBadge.className = 'px-2.5 py-0.5 rounded-full text-[11px] font-bold ' + (
+                doc.status === 'COMPLETED'
+                    ? 'bg-ggreen-light text-ggreen'
+                    : (doc.status === 'RETURNED' ? 'bg-gred-light text-gred' : 'bg-gyellow-light text-gyellow-dark')
+            );
 
-            const logs = trackingLogs.filter(l => l.trackingId === docId);
-            const timelineContainer = document.getElementById('modal-timeline-list');
-
-            timelineContainer.innerHTML = logs.map((l, idx) => {
-                const isLatest = idx === logs.length - 1;
-                const dotColor = isLatest ? 'bg-gblue ring-4 ring-gblue/20' : 'bg-ggreen';
-                return `
-                    <div class="relative pl-9">
-                        <div class="w-3.5 h-3.5 rounded-full ${dotColor} absolute left-2 top-1"></div>
-                        <div class="bg-white p-3.5 rounded-2xl border border-gray-200/80 shadow-xs">
-                            <div class="flex flex-wrap items-center justify-between gap-1">
-                                <span class="text-xs font-bold text-gray-900">${escapeHtml(l.office)} — <span class="text-gblue">${escapeHtml(l.action)}</span></span>
-                                <span class="text-[11px] font-mono text-gray-400">${escapeHtml(l.timestamp)}</span>
+            const logs = trackingLogs.filter(l => l.trackingId === doc.id);
+            const timelineEl = document.getElementById('modal-timeline-list');
+            if (logs.length === 0) {
+                timelineEl.innerHTML = `<p class="text-xs text-gray-400 pl-8">No routing logs recorded yet.</p>`;
+            } else {
+                timelineEl.innerHTML = logs.map((l, idx) => {
+                    const isLatest = idx === logs.length - 1;
+                    const dotColor = isLatest ? 'bg-gblue ring-4 ring-gblue/20' : 'bg-ggreen';
+                    return `
+                        <div class="relative pl-9">
+                            <div class="absolute left-2 top-1.5 w-3.5 h-3.5 rounded-full ${dotColor}"></div>
+                            <div class="bg-white p-3 rounded-2xl border border-gray-200/80 shadow-2xs">
+                                <div class="flex flex-wrap items-center justify-between gap-1">
+                                    <span class="text-xs font-bold text-gray-800">${escapeHtml(l.office)}</span>
+                                    <span class="text-[10px] font-mono text-gray-400">${escapeHtml(l.timestamp)}</span>
+                                </div>
+                                <p class="text-xs font-semibold text-gblue mt-0.5">${escapeHtml(l.action)} <span class="text-gray-500 font-normal">by ${escapeHtml(l.handledBy)}</span></p>
+                                <p class="text-xs text-gray-600 mt-1">${escapeHtml(l.remarks)}</p>
                             </div>
-                            <p class="text-xs text-gray-600 mt-1">${escapeHtml(l.remarks)}</p>
-                            <p class="text-[11px] text-gray-400 mt-1">Handled by: <strong class="text-gray-700">${escapeHtml(l.handledBy)}</strong></p>
                         </div>
-                    </div>
-                `;
-            }).join('');
+                    `;
+                }).join('');
+            }
 
             const modal = document.getElementById('doc-detail-modal');
             modal.classList.remove('hidden');
@@ -1955,54 +2061,25 @@ function jsonResponse(obj) {
 
         function loadDocToPrintSlip() {
             const doc = documentsList.find(d => d.id === activeModalDocId);
-            if (!doc) return;
             closeDocModal();
             switchTab('create');
-            updateLiveTemplatePreview(doc);
-            showToast(`Loaded ${doc.id} into Printable Slip Preview`, 'info');
+            if (doc) {
+                updateLiveTemplatePreview(doc);
+                showToast(`Loaded ${doc.id} into printable slip preview`, 'info');
+            }
         }
 
         function scanThisModalDoc() {
-            const id = activeModalDocId;
+            const idToScan = activeModalDocId;
             closeDocModal();
             switchTab('scan');
-            processScannedCode(id);
+            if (idToScan) {
+                processScannedCode(idToScan);
+            }
         }
 
         /*************************************************************************
-         * TEMPLATE CUSTOMIZER
-         *************************************************************************/
-        function openTemplateCustomizer() {
-            const m = document.getElementById('template-modal');
-            m.classList.remove('hidden');
-            m.classList.add('flex');
-        }
-
-        function closeTemplateCustomizer() {
-            const m = document.getElementById('template-modal');
-            m.classList.add('hidden');
-            m.classList.remove('flex');
-        }
-
-        function saveTemplateConfig() {
-            const orgName = document.getElementById('cfg-org-name').value.trim() || 'OFFICE DOCUMENT TRACKING FORM';
-            const formCode = document.getElementById('cfg-form-code').value.trim();
-            const f1 = document.getElementById('cfg-field-1').value.trim() || 'Reference No.';
-            const f2 = document.getElementById('cfg-field-2').value.trim() || 'Attachments';
-
-            document.getElementById('tpl-org-name').textContent = orgName;
-            document.getElementById('tpl-form-code').textContent = formCode;
-            document.getElementById('lbl-custom-1').textContent = f1;
-            document.getElementById('lbl-custom-2').textContent = f2;
-            document.getElementById('tpl-lbl-custom1').textContent = f1.toUpperCase() + ':';
-            document.getElementById('tpl-lbl-custom2').textContent = f2.toUpperCase() + ':';
-
-            closeTemplateCustomizer();
-            showToast('Tracking Form Template updated!', 'success');
-        }
-
-        /*************************************************************************
-         * OFFICIAL DEPED & AGUSAN DEL NORTE SEAL CUSTOMIZER
+         * OFFICIAL DEPED & AGUSAN DEL NORTE SEAL CUSTOMIZER (CLOUD + PERMANENT)
          *************************************************************************/
         function openLogoCustomizer() {
             const m = document.getElementById('logo-modal');
@@ -2016,26 +2093,64 @@ function jsonResponse(obj) {
             m.classList.remove('flex');
         }
 
-        function handleSealUpload(event, sealType) {
+        // Compress uploaded logo to clean 220x220 PNG DataURL so it fits inside a Google Sheet cell (<50,000 chars)
+        function compressImageFile(file, maxSize = 220) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const canvas = document.createElement('canvas');
+                        let w = img.width;
+                        let h = img.height;
+                        if (w > h) {
+                            if (w > maxSize) { h = Math.round(h * maxSize / w); w = maxSize; }
+                        } else {
+                            if (h > maxSize) { w = Math.round(w * maxSize / h); h = maxSize; }
+                        }
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, w, h);
+                        resolve(canvas.toDataURL('image/png', 0.9));
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function handleSealUpload(event, sealType) {
             const file = event.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const dataUrl = e.target.result;
-                if (sealType === 'deped') {
-                    localStorage.setItem('custom_deped_seal', dataUrl);
-                } else {
-                    localStorage.setItem('custom_adn_seal', dataUrl);
+            const dataUrl = await compressImageFile(file, 220);
+
+            if (sealType === 'deped') {
+                localStorage.setItem('custom_deped_seal', dataUrl);
+            } else {
+                localStorage.setItem('custom_adn_seal', dataUrl);
+            }
+            applySavedSeals();
+
+            // Also persist to Google Sheet "Settings" tab so you never have to upload again on any device
+            if (gasWebAppUrl) {
+                try {
+                    const settingsPayload = {};
+                    if (sealType === 'deped') settingsPayload.custom_deped_seal = dataUrl;
+                    if (sealType === 'adn') settingsPayload.custom_adn_seal = dataUrl;
+                    await callGasBackend({ action: 'saveSettings', settings: settingsPayload });
+                    showToast('Official Seal saved permanently to Google Sheet Database!', 'success');
+                    return;
+                } catch (err) {
+                    console.warn("Logo cloud save warning:", err);
                 }
-                applySavedSeals();
-                showToast('Official Seal Image embedded onto Tracking Slip!', 'success');
-            };
-            reader.readAsDataURL(file);
+            }
+            showToast('Official Seal embedded & saved! Connect Google Sheet to sync across devices.', 'success');
         }
 
         function applySavedSeals() {
-            const depedData = localStorage.getItem('custom_deped_seal');
-            const adnData = localStorage.getItem('custom_adn_seal');
+            const depedData = PERMANENT_LOGOS.depedSealDataUrl || localStorage.getItem('custom_deped_seal');
+            const adnData = PERMANENT_LOGOS.adnSealDataUrl || localStorage.getItem('custom_adn_seal');
 
             const depedImg = document.getElementById('custom-deped-seal-img');
             const depedSvg = document.getElementById('default-deped-seal-svg');
@@ -2060,40 +2175,118 @@ function jsonResponse(obj) {
             }
         }
 
-        function resetDefaultVectorSeals() {
+        function copyPermanentLogosSnippet() {
+            const depedData = localStorage.getItem('custom_deped_seal') || "";
+            const adnData = localStorage.getItem('custom_adn_seal') || "";
+            if (!depedData && !adnData) {
+                showToast('Please select at least one seal image file above first.', 'warning');
+                return;
+            }
+            const snippet = `const PERMANENT_LOGOS = {\n    depedSealDataUrl: "${depedData}",\n    adnSealDataUrl: "${adnData}"\n};`;
+            const temp = document.createElement('textarea');
+            temp.value = snippet;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            showToast('Copied PERMANENT_LOGOS code to clipboard!', 'success');
+        }
+
+        async function resetDefaultVectorSeals() {
             localStorage.removeItem('custom_deped_seal');
             localStorage.removeItem('custom_adn_seal');
             applySavedSeals();
+            if (gasWebAppUrl) {
+                try {
+                    await callGasBackend({ action: 'saveSettings', settings: { custom_deped_seal: '', custom_adn_seal: '' } });
+                } catch (e) {}
+            }
             showToast('Restored built-in vector DepEd & ADN seals', 'info');
         }
 
         /*************************************************************************
-         * ADMIN SETTINGS, BACKEND CODE VERIFICATION & USER MANAGEMENT
+         * ADMIN SETTINGS, BACKEND CODE VERIFICATION, PASSWORD CHANGE & USERS
          *************************************************************************/
+        function updateConnectionUI(isConnected, sheetUrl = "") {
+            const dot = document.getElementById('conn-dot');
+            const label = document.getElementById('conn-label');
+            const sublabel = document.getElementById('conn-sublabel');
+            const mobileText = document.getElementById('mobile-conn-text');
+            const openSheetBtn = document.getElementById('btn-open-sheet');
+            const sheetBox = document.getElementById('sheet-link-box');
+            const sheetDirectLink = document.getElementById('sheet-direct-link');
+            const sheetUrlDisplay = document.getElementById('sheet-url-display');
+
+            if (sheetUrl) {
+                connectedSheetUrl = sheetUrl;
+                localStorage.setItem('doctrack_sheet_url', sheetUrl);
+            }
+
+            if (isConnected) {
+                if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-ggreen animate-pulse shrink-0";
+                if (label) label.textContent = "Google Sheet Live";
+                if (sublabel) sublabel.textContent = "Synced with Apps Script";
+                if (mobileText) {
+                    mobileText.textContent = "● Google Sheet Connected";
+                    mobileText.className = "text-[10px] text-ggreen font-medium";
+                }
+                if (connectedSheetUrl) {
+                    if (openSheetBtn) {
+                        openSheetBtn.href = connectedSheetUrl;
+                        openSheetBtn.classList.remove('hidden');
+                        openSheetBtn.classList.add('flex');
+                    }
+                    if (sheetBox) sheetBox.classList.remove('hidden');
+                    if (sheetDirectLink) sheetDirectLink.href = connectedSheetUrl;
+                    if (sheetUrlDisplay) sheetUrlDisplay.textContent = connectedSheetUrl;
+                }
+            } else {
+                if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-gyellow shrink-0";
+                if (label) label.textContent = "Offline / Local Cache";
+                if (sublabel) sublabel.textContent = "Connect GAS in Admin";
+                if (mobileText) {
+                    mobileText.textContent = "● Local Cache Mode";
+                    mobileText.className = "text-[10px] text-gyellow-dark font-medium";
+                }
+            }
+        }
+
         async function verifyAdminAccess(e) {
             e.preventDefault();
             const codeInput = document.getElementById('admin-passcode-input').value.trim();
+            const urlFromLock = document.getElementById('lock-gas-url-input')?.value.trim();
+            const btn = document.getElementById('btn-unlock-admin');
+
+            if (urlFromLock) {
+                gasWebAppUrl = urlFromLock;
+                localStorage.setItem('doctrack_gas_url', gasWebAppUrl);
+                const adminUrlInput = document.getElementById('gas-webapp-url');
+                if (adminUrlInput) adminUrlInput.value = gasWebAppUrl;
+            }
 
             if (gasWebAppUrl) {
+                if (btn) btn.textContent = "Verifying with Google Sheet Backend...";
                 try {
-                    const res = await fetch(gasWebAppUrl, {
-                        method: 'POST',
-                        body: JSON.stringify({ action: 'verifyAdmin', adminCode: codeInput })
-                    });
-                    const data = await res.json();
-                    if (data.valid) {
+                    const data = await callGasBackend({ action: 'verifyAdmin', adminCode: codeInput });
+                    if (btn) btn.textContent = "Verify & Unlock Admin Console";
+                    if (data && data.valid) {
+                        localAdminCode = codeInput;
+                        localStorage.setItem('doctrack_admin_code', codeInput);
+                        if (data.sheetUrl) updateConnectionUI(true, data.sheetUrl);
                         unlockAdminUI(codeInput);
+                        syncWithBackend();
                         return;
-                    } else {
-                        showToast('Invalid Admin Code rejected by Google Apps Script backend', 'error');
+                    } else if (data && data.status === 'unauthorized') {
+                        showToast('Invalid Admin Passcode rejected by Google Apps Script backend', 'error');
                         return;
                     }
                 } catch (err) {
-                    // Fallback if CORS preflight blocks read in sandbox
+                    if (btn) btn.textContent = "Verify & Unlock Admin Console";
+                    showToast('Could not reach GAS URL. Checking local admin passcode...', 'warning');
                 }
             }
 
-            if (codeInput === DEFAULT_ADMIN_CODE) {
+            if (codeInput === localAdminCode) {
                 unlockAdminUI(codeInput);
             } else {
                 showToast('Invalid Admin Passcode!', 'error');
@@ -2106,6 +2299,8 @@ function jsonResponse(obj) {
             document.getElementById('admin-lock-screen').classList.add('hidden');
             document.getElementById('admin-console-content').classList.remove('hidden');
             document.getElementById('admin-passcode-input').value = '';
+            const adminUrlInput = document.getElementById('gas-webapp-url');
+            if (adminUrlInput) adminUrlInput.value = gasWebAppUrl;
             renderAdminUsers();
             showToast('Admin Console Unlocked', 'success');
         }
@@ -2115,6 +2310,56 @@ function jsonResponse(obj) {
             unlockedAdminSecret = "";
             document.getElementById('admin-lock-screen').classList.remove('hidden');
             document.getElementById('admin-console-content').classList.add('hidden');
+        }
+
+        async function handleChangeAdminPassword(e) {
+            e.preventDefault();
+            const curEl = document.getElementById('cp-current');
+            const newEl = document.getElementById('cp-new');
+            const currentCode = curEl.value.trim();
+            const newCode = newEl.value.trim();
+
+            if (newCode.length < 4) {
+                showToast('New passcode must be at least 4 characters.', 'warning');
+                return;
+            }
+
+            if (gasWebAppUrl) {
+                try {
+                    const res = await callGasBackend({
+                        action: 'changeAdminPassword',
+                        currentCode: currentCode,
+                        newCode: newCode
+                    });
+                    if (res && res.status === 'success') {
+                        localAdminCode = newCode;
+                        unlockedAdminSecret = newCode;
+                        localStorage.setItem('doctrack_admin_code', newCode);
+                        curEl.value = '';
+                        newEl.value = '';
+                        showToast('Admin Passcode updated in Google Apps Script backend!', 'success');
+                        return;
+                    } else {
+                        showToast(res?.message || 'Failed to update passcode in backend.', 'error');
+                        return;
+                    }
+                } catch (err) {
+                    showToast('Error contacting backend. Check your GAS URL.', 'error');
+                    return;
+                }
+            }
+
+            // Local fallback if not yet connected to GAS
+            if (currentCode !== localAdminCode) {
+                showToast('Current passcode is incorrect.', 'error');
+                return;
+            }
+            localAdminCode = newCode;
+            unlockedAdminSecret = newCode;
+            localStorage.setItem('doctrack_admin_code', newCode);
+            curEl.value = '';
+            newEl.value = '';
+            showToast('Admin Passcode updated!', 'success');
         }
 
         function renderAdminUsers() {
@@ -2143,24 +2388,21 @@ function jsonResponse(obj) {
             const newUser = {
                 id: 'USR-0' + (usersList.length + 1),
                 name: nameEl.value.trim(),
-                office: officeEl.value.trim(),
+                office: officeEl.value.trim().toUpperCase(),
                 role: 'Officer'
             };
 
             usersList.push(newUser);
+            saveStateToLocalCache();
             populateUserAndOfficeSelectors();
             renderAdminUsers();
 
             if (gasWebAppUrl) {
                 try {
-                    await fetch(gasWebAppUrl, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        body: JSON.stringify({
-                            action: 'addUser',
-                            adminCode: unlockedAdminSecret,
-                            user: newUser
-                        })
+                    await callGasBackend({
+                        action: 'addUser',
+                        adminCode: unlockedAdminSecret || localAdminCode,
+                        user: newUser
                     });
                 } catch (err) {}
             }
@@ -2170,25 +2412,19 @@ function jsonResponse(obj) {
             showToast(`Added ${newUser.name} (${newUser.office})`, 'success');
         }
 
-        function saveGasConnection() {
+        async function saveGasConnection() {
             const url = document.getElementById('gas-webapp-url').value.trim();
             if (!url) {
-                showToast('Please enter a valid Google Apps Script Web App URL', 'warning');
+                showToast('Please enter your Google Apps Script Web App URL (/exec)', 'warning');
                 return;
             }
             gasWebAppUrl = url;
-            document.getElementById('conn-label').textContent = 'Google Sheet Live';
-            document.getElementById('mobile-conn-text').textContent = '● GAS Cloud Connected';
-            showToast('Connected to Google Apps Script Web App!', 'success');
-            syncWithBackend();
-        }
+            localStorage.setItem('doctrack_gas_url', gasWebAppUrl);
+            const lockUrl = document.getElementById('lock-gas-url-input');
+            if (lockUrl) lockUrl.value = gasWebAppUrl;
 
-        function clearGasConnection() {
-            gasWebAppUrl = '';
-            document.getElementById('gas-webapp-url').value = '';
-            document.getElementById('conn-label').textContent = 'Local Demo DB';
-            document.getElementById('mobile-conn-text').textContent = '● Active Ready';
-            showToast('Switched to Local Demo Database', 'info');
+            showToast('Connecting & initializing Google Sheet tabs...', 'info');
+            await syncWithBackend();
         }
 
         async function syncWithBackend() {
@@ -2200,45 +2436,77 @@ function jsonResponse(obj) {
                     const response = await fetch(`${gasWebAppUrl}?action=getAll`);
                     const data = await response.json();
                     if (data && data.status === 'success') {
-                        if (data.documents?.length) {
-                            documentsList = data.documents.map(d => ({
-                                id: d.TrackingID,
-                                title: d.Title,
-                                type: d.Type,
-                                priority: d.Priority,
-                                origin: d.OriginOffice,
-                                destination: d.DestinationOffice,
-                                custom1: d.Custom1,
-                                custom2: d.Custom2,
-                                remarks: d.Remarks,
-                                status: d.Status,
-                                currentOffice: d.CurrentOffice,
-                                createdBy: d.CreatedBy,
-                                createdAt: d.CreatedAt
-                            }));
+                        updateConnectionUI(true, data.sheetUrl || "");
+
+                        if (Array.isArray(data.documents)) {
+                            documentsList = data.documents.map(d => {
+                                let meta = {};
+                                try { meta = JSON.parse(d.MetaJSON || '{}'); } catch (e) {}
+                                return {
+                                    id: String(d.TrackingID || ''),
+                                    title: String(d.Title || ''),
+                                    startParty: String(d.StartParty || ''),
+                                    type: String(d.Type || ''),
+                                    selectedTypes: meta.selectedTypes || [],
+                                    dvOptions: meta.dvOptions || {},
+                                    fillIns: meta.fillIns || {},
+                                    priority: String(d.Priority || 'NORMAL'),
+                                    origin: String(d.OriginOffice || ''),
+                                    destination: String(d.DestinationOffice || ''),
+                                    custom1: String(d.StartParty || ''),
+                                    custom2: String(d.EndNote || ''),
+                                    remarks: String(d.Remarks || ''),
+                                    status: String(d.Status || 'IN TRANSIT'),
+                                    currentOffice: String(d.CurrentOffice || ''),
+                                    createdBy: String(d.CreatedBy || ''),
+                                    createdAt: String(d.CreatedAt || '')
+                                };
+                            }).reverse();
                         }
-                        if (data.logs?.length) {
+                        if (Array.isArray(data.logs)) {
                             trackingLogs = data.logs.map(l => ({
-                                logId: l.LogID,
-                                trackingId: l.TrackingID,
-                                office: l.Office,
-                                action: l.Action,
-                                handledBy: l.HandledBy,
-                                remarks: l.Remarks,
-                                timestamp: l.Timestamp
+                                logId: String(l.LogID || ''),
+                                trackingId: String(l.TrackingID || ''),
+                                office: String(l.Office || ''),
+                                action: String(l.Action || ''),
+                                handledBy: String(l.HandledBy || ''),
+                                remarks: String(l.Remarks || ''),
+                                timestamp: String(l.Timestamp || '')
                             }));
                         }
+                        if (Array.isArray(data.users) && data.users.length > 0) {
+                            usersList = data.users.map(u => ({
+                                id: String(u.UserID || ''),
+                                name: String(u.Name || ''),
+                                office: String(u.Office || ''),
+                                role: String(u.Role || 'Officer')
+                            }));
+                            activeUser = usersList[0];
+                            populateUserAndOfficeSelectors();
+                            renderAdminUsers();
+                        }
+                        if (data.settings) {
+                            if (data.settings.custom_deped_seal) {
+                                localStorage.setItem('custom_deped_seal', data.settings.custom_deped_seal);
+                            }
+                            if (data.settings.custom_adn_seal) {
+                                localStorage.setItem('custom_adn_seal', data.settings.custom_adn_seal);
+                            }
+                            applySavedSeals();
+                        }
+                        saveStateToLocalCache();
                         renderDashboard();
-                        showToast('Synced latest records from Google Sheets!', 'success');
+                        showToast('Synced live with Google Sheet Database!', 'success');
+                    } else {
+                        showToast('Backend returned error: ' + (data?.message || 'Check script'), 'error');
                     }
                 } catch (err) {
-                    showToast('Synced local state (Verify CORS/Anyone access on GAS URL)', 'info');
+                    updateConnectionUI(false);
+                    showToast('Could not reach GAS Web App. Ensure "Who has access: Anyone" is set in Deployment.', 'warning');
                 }
             } else {
-                setTimeout(() => {
-                    renderDashboard();
-                    showToast('Workspace state synchronized', 'info');
-                }, 350);
+                renderDashboard();
+                showToast('Set your Google Apps Script URL in the Admin tab to sync with Google Sheets.', 'info');
             }
 
             setTimeout(() => {
@@ -2288,11 +2556,23 @@ function jsonResponse(obj) {
 
         // Initialize on Window Load
         window.onload = function () {
+            const lockUrl = document.getElementById('lock-gas-url-input');
+            if (lockUrl && gasWebAppUrl) lockUrl.value = gasWebAppUrl;
+            const adminUrl = document.getElementById('gas-webapp-url');
+            if (adminUrl && gasWebAppUrl) adminUrl.value = gasWebAppUrl;
+
             populateUserAndOfficeSelectors();
             renderDocTypesFormCheckboxes();
             applySavedSeals();
             switchTab('dashboard');
             updateLiveTemplatePreview();
+
+            if (gasWebAppUrl) {
+                updateConnectionUI(true, connectedSheetUrl);
+                syncWithBackend();
+            } else {
+                updateConnectionUI(false);
+            }
         };
     </script>
 </body>
