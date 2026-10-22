@@ -4,6 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>DocTrack QR - Google Workspace Document Routing</title>
+
+    <!-- =====================================================================
+         1. HARDCODE YOUR GOOGLE APPS SCRIPT WEB APP URL (/exec) RIGHT HERE:
+         Paste your link inside the quotes below so every device connects
+         automatically using a single link without any setup!
+         ===================================================================== -->
+    <script>
+        const DEFAULT_GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyimpV2auIv1-xeYLudJkwEfa1FJ8Lk8DOcvdvyvXE6yPysRPVb9PnJ3X5gGBmUkZHCuw/exec";
+
+        // Optional: Paste direct image or Google Drive links for your two seals here:
+        const PERMANENT_LOGOS = {
+            depedSealDataUrl: "https://drive.google.com/file/d/1AnqM3tXDQgf7cSODB_LoHxYUJbM6B5at/view?usp=sharing",
+            adnSealDataUrl: "https://drive.google.com/file/d/1uSlILUOUJ3SnKZKfZ3NH9mhTyWh2NsiV/view?usp=sharing"
+        };
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Inter, Plus Jakarta Sans & UnifrakturMaguntia (for Old English DepEd header) -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700&family=UnifrakturMaguntia&display=swap" rel="stylesheet">
@@ -129,7 +145,7 @@
                     <div id="conn-dot" class="w-2.5 h-2.5 rounded-full bg-gyellow shrink-0"></div>
                     <div class="hidden lg:block overflow-hidden">
                         <p id="conn-label" class="text-xs font-semibold text-gray-700 truncate">Not Connected</p>
-                        <p id="conn-sublabel" class="text-[10px] text-gray-400 truncate">Set GAS URL in Admin</p>
+                        <p id="conn-sublabel" class="text-[10px] text-gray-400 truncate">Syncing with Sheet...</p>
                     </div>
                 </div>
             </div>
@@ -157,7 +173,7 @@
                 </div>
                 <div>
                     <h1 class="font-display font-bold text-base text-gray-800 leading-tight">DocTrack</h1>
-                    <p id="mobile-conn-text" class="text-[10px] text-gyellow-dark font-medium">● Setup Required</p>
+                    <p id="mobile-conn-text" class="text-[10px] text-gyellow-dark font-medium">● Connecting...</p>
                 </div>
             </div>
 
@@ -653,19 +669,15 @@
             <!-- VIEW 3: ADMIN SETTINGS & GOOGLE APPS SCRIPT BACKEND -->
             <section id="view-admin" class="hidden space-y-6 no-print">
 
-                <!-- Admin Lock Screen (Verified against Backend) -->
+                <!-- Admin Lock Screen (Verified against Hardcoded Backend) -->
                 <div id="admin-lock-screen" class="max-w-md mx-auto bg-white rounded-3xl border border-gray-200/80 p-6 sm:p-8 text-center google-shadow my-8">
                     <div class="w-16 h-16 rounded-2xl bg-gred-light text-gred mx-auto flex items-center justify-center mb-4">
                         <i class="ph-duotone ph-lock-key text-3xl"></i>
                     </div>
                     <h2 class="font-display font-bold text-xl text-gray-800">Admin Authentication</h2>
-                    <p class="text-xs text-gray-500 mt-1 mb-4">Enter your Admin Passcode to unlock the console and access the Google Apps Script setup.</p>
+                    <p class="text-xs text-gray-500 mt-1 mb-5">Enter your Admin Passcode to unlock the console.</p>
 
                     <form onsubmit="verifyAdminAccess(event)" class="space-y-3.5 text-left">
-                        <div>
-                            <label class="block text-[11px] font-semibold uppercase text-gray-500 mb-1">Google Apps Script Web App URL (Optional for first unlock)</label>
-                            <input type="url" id="lock-gas-url-input" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs font-mono focus:outline-none focus:border-gblue">
-                        </div>
                         <div>
                             <label class="block text-[11px] font-semibold uppercase text-gray-500 mb-1">Admin Passcode</label>
                             <div class="relative">
@@ -690,7 +702,7 @@
                             </div>
                             <div>
                                 <h2 class="font-display font-bold text-lg text-gray-800">Administrator Console</h2>
-                                <p class="text-xs text-gray-500">Manage Google Sheet Database, Offices/Users, Permanent Logos & Admin Passcode</p>
+                                <p class="text-xs text-gray-500">Manage Google Sheet Database, Users/Offices, Specific Documents & Security</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
@@ -703,137 +715,73 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                        <!-- User & Receiving Office Management (6 cols) -->
-                        <div class="lg:col-span-6 bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-5">
-                            <div class="flex items-center justify-between gap-2.5">
-                                <div class="flex items-center gap-2.5">
-                                    <i class="ph-duotone ph-users-three text-2xl text-gblue"></i>
-                                    <div>
-                                        <h3 class="font-display font-bold text-base text-gray-800">Registered Users & Receiving Offices</h3>
-                                        <p class="text-xs text-gray-500">Saved directly to the "Users" tab in your Google Sheet</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <form onsubmit="handleAddUser(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 bg-gsurface p-3.5 rounded-2xl border border-gray-200/70">
-                                <input type="text" id="new-user-name" required placeholder="Full Name (e.g. Juan Cruz)" class="sm:col-span-5 px-3 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-gblue">
-                                <input type="text" id="new-user-office" required placeholder="Office / Unit (e.g. CID)" class="sm:col-span-4 px-3 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-gblue">
-                                <button type="submit" class="sm:col-span-3 py-2 px-3 rounded-xl bg-gblue text-white text-xs font-semibold hover:bg-gblue-dark flex items-center justify-center gap-1 transition">
-                                    <i class="ph-bold ph-user-plus"></i> Add User
-                                </button>
-                            </form>
-
-                            <div id="admin-users-list" class="space-y-2 max-h-72 overflow-y-auto pr-1">
-                                <!-- Populated via JS -->
-                            </div>
-                        </div>
-
-                        <!-- Google Sheet & Apps Script Web App Connection + Password Changer (6 cols) -->
-                        <div class="lg:col-span-6 space-y-6">
-                            <!-- Database Connection Card -->
-                            <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-4">
-                                <div class="flex items-center gap-2.5">
-                                    <i class="ph-duotone ph-database text-2xl text-ggreen"></i>
-                                    <div>
-                                        <h3 class="font-display font-bold text-base text-gray-800">Google Sheets Database Connection</h3>
-                                        <p class="text-xs text-gray-500">Connect and initialize your Google Sheet tabs</p>
-                                    </div>
-                                </div>
-
-                                <div class="space-y-3">
-                                    <div>
-                                        <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Google Apps Script Web App URL (/exec)</label>
-                                        <input type="url" id="gas-webapp-url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs font-mono focus:outline-none focus:border-gblue">
-                                    </div>
-
-                                    <div class="flex flex-wrap gap-2">
-                                        <button onclick="saveGasConnection()" class="px-4 py-2.5 rounded-xl bg-ggreen hover:bg-ggreen-dark text-white text-xs font-semibold flex items-center gap-1.5 transition">
-                                            <i class="ph-bold ph-plugs-connected"></i> Connect & Initialize Sheets
-                                        </button>
-                                        <button onclick="copyShareableDeviceLink()" class="px-4 py-2.5 rounded-xl bg-gblue text-white hover:bg-gblue-dark text-xs font-semibold flex items-center gap-1.5 transition" title="Share this link so other phones/PCs connect automatically">
-                                            <i class="ph-bold ph-share-network"></i> Copy Multi-Device Access Link
-                                        </button>
-                                        <button onclick="openLogoCustomizer()" class="px-4 py-2.5 rounded-xl bg-gblue-light text-gblue hover:bg-gblue/20 text-xs font-semibold flex items-center gap-1.5 transition">
-                                            <i class="ph-bold ph-seal-check"></i> Embed Permanent Logos
-                                        </button>
-                                    </div>
-
-                                    <div class="p-3 rounded-2xl bg-gblue-light/50 border border-gblue/20 text-[11px] text-gray-700 space-y-1">
-                                        <p class="font-bold text-gblue-dark flex items-center gap-1"><i class="ph-fill ph-devices"></i> How to let other devices view &amp; scan documents:</p>
-                                        <p>1. Click <strong>Copy Multi-Device Access Link</strong> above and send it to your staff, OR</p>
-                                        <p>2. Paste your Web App URL inside <code>DEFAULT_GAS_WEBAPP_URL</code> in the code so every device connects automatically without setup.</p>
-                                    </div>
-
-                                    <div id="sheet-link-box" class="hidden p-3 rounded-2xl bg-ggreen-light/60 border border-ggreen/30 flex items-center justify-between gap-2">
-                                        <div class="text-xs text-gray-800 truncate">
-                                            <span class="font-bold text-ggreen-dark block">● Connected to Google Sheet Database</span>
-                                            <span id="sheet-url-display" class="text-[11px] font-mono text-gray-600 truncate block"></span>
-                                        </div>
-                                        <a id="sheet-direct-link" href="#" target="_blank" rel="noopener noreferrer" class="shrink-0 px-3 py-1.5 rounded-xl bg-ggreen text-white text-xs font-semibold hover:bg-ggreen-dark transition">
-                                            Open Sheet ↗
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Change Admin Password Card -->
-                            <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-4">
-                                <div class="flex items-center gap-2.5">
-                                    <i class="ph-duotone ph-key text-2xl text-gyellow-dark"></i>
-                                    <div>
-                                        <h3 class="font-display font-bold text-base text-gray-800">Change Admin Passcode</h3>
-                                        <p class="text-xs text-gray-500">Updates your hidden passcode in Google Apps Script Properties</p>
-                                    </div>
-                                </div>
-
-                                <form onsubmit="handleChangeAdminPassword(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                                    <input type="password" id="cp-current" required placeholder="Current Passcode" class="px-3 py-2 rounded-xl border border-gray-300 text-xs font-mono focus:outline-none focus:border-gblue">
-                                    <input type="password" id="cp-new" required placeholder="New Passcode" class="px-3 py-2 rounded-xl border border-gray-300 text-xs font-mono focus:outline-none focus:border-gblue">
-                                    <button type="submit" class="py-2 px-3 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition">
-                                        <i class="ph-bold ph-check"></i> Update Passcode
-                                    </button>
-                                </form>
-                            </div>
-
-                            <!-- Bottleneck / Lapse Time Threshold Card -->
-                            <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-3">
-                                <div class="flex items-center gap-2.5">
-                                    <i class="ph-duotone ph-hourglass-high text-2xl text-gred"></i>
-                                    <div>
-                                        <h3 class="font-display font-bold text-base text-gray-800">Office Bottleneck / Lapse Time Alert</h3>
-                                        <p class="text-xs text-gray-500">Notify users when a document stays idle in one office longer than this limit</p>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-2.5">
-                                    <input type="number" id="lapse-hours-input" min="0.1" step="0.5" value="24" class="w-28 px-3 py-2 rounded-xl border border-gray-300 text-xs font-mono font-bold focus:outline-none focus:border-gblue">
-                                    <span class="text-xs font-semibold text-gray-600">Hours max per office</span>
-                                    <button type="button" onclick="saveLapseTimeThreshold()" class="ml-auto px-4 py-2 rounded-xl bg-gred text-white text-xs font-semibold hover:bg-gred-dark transition">
-                                        Save Limit
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                    <!-- ADMIN TAB BAR NAVIGATION -->
+                    <div class="flex items-center gap-2 border-b border-gray-200 pb-3 overflow-x-auto no-scrollbar">
+                        <button onclick="switchAdminTab('db')" id="admintab-btn-db" class="px-4 py-2 rounded-xl text-xs font-bold bg-gblue text-white transition flex items-center gap-2 shrink-0">
+                            <i class="ph-duotone ph-database text-base"></i> Database &amp; Setup
+                        </button>
+                        <button onclick="switchAdminTab('users')" id="admintab-btn-users" class="px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 transition flex items-center gap-2 shrink-0">
+                            <i class="ph-duotone ph-users text-base"></i> Users &amp; Offices
+                        </button>
+                        <button onclick="switchAdminTab('docs')" id="admintab-btn-docs" class="px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 transition flex items-center gap-2 shrink-0">
+                            <i class="ph-duotone ph-files text-base"></i> Manage Documents
+                        </button>
+                        <button onclick="switchAdminTab('security')" id="admintab-btn-security" class="px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 transition flex items-center gap-2 shrink-0">
+                            <i class="ph-duotone ph-shield-star text-base"></i> Logos &amp; Security
+                        </button>
                     </div>
 
-                    <!-- Complete Google Apps Script Backend Code (Code.gs) -->
-                    <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-4">
-                        <div class="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <span class="px-2.5 py-1 rounded-full bg-gyellow-light text-gyellow-dark font-bold text-[10px] uppercase tracking-wider">Required Backend Setup</span>
-                                <h3 class="font-display font-bold text-base text-gray-800 mt-1">Google Apps Script (`Code.gs`) — Auto-Creates Sheet + Google Drive Archive Folder</h3>
-                                <ol class="text-xs text-gray-600 list-decimal list-inside space-y-0.5 mt-1">
-                                    <li>Replace all code in your Apps Script <code>Code.gs</code> with the updated script below and click <strong>Save (💾)</strong>.</li>
-                                    <li>Select <strong><code>setupSheets</code></strong> in the top toolbar dropdown and click <strong>Run</strong> once (authorizes Google Sheets &amp; Google Drive storage).</li>
-                                    <li>Click <strong>Deploy &gt; New deployment &gt; Web app</strong> (Execute as: <em>Me</em>, Who has access: <em>Anyone</em>) and paste the Web App URL above.</li>
-                                </ol>
+                    <!-- TAB 1: DATABASE & BACKEND SETUP -->
+                    <div id="admintab-pane-db" class="admin-tab-pane space-y-6">
+                        <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-4">
+                            <div class="flex items-center gap-2.5">
+                                <i class="ph-duotone ph-database text-2xl text-ggreen"></i>
+                                <div>
+                                    <h3 class="font-display font-bold text-base text-gray-800">Google Sheets Database Connection</h3>
+                                    <p class="text-xs text-gray-500">Connected via hardcoded Web App URL and initialized with Google Sheet tabs</p>
+                                </div>
                             </div>
-                            <button onclick="copyGasBackendCode()" class="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-semibold flex items-center gap-2 transition">
-                                <i class="ph-bold ph-copy"></i> Copy `Code.gs`
-                            </button>
+
+                            <div class="space-y-3">
+                                <div class="flex flex-wrap gap-2">
+                                    <button onclick="syncWithBackend(false)" class="px-4 py-2.5 rounded-xl bg-ggreen hover:bg-ggreen-dark text-white text-xs font-semibold flex items-center gap-1.5 transition">
+                                        <i class="ph-bold ph-plugs-connected"></i> Sync &amp; Initialize Sheets
+                                    </button>
+                                    <button onclick="copyShareableDeviceLink()" class="px-4 py-2.5 rounded-xl bg-gblue text-white hover:bg-gblue-dark text-xs font-semibold flex items-center gap-1.5 transition" title="Share this link so other phones/PCs connect automatically">
+                                        <i class="ph-bold ph-share-network"></i> Copy Multi-Device Access Link
+                                    </button>
+                                </div>
+
+                                <div id="sheet-link-box" class="hidden p-3 rounded-2xl bg-ggreen-light/60 border border-ggreen/30 flex items-center justify-between gap-2">
+                                    <div class="text-xs text-gray-800 truncate">
+                                        <span class="font-bold text-ggreen-dark block">● Connected to Google Sheet Database</span>
+                                        <span id="sheet-url-display" class="text-[11px] font-mono text-gray-600 truncate block"></span>
+                                    </div>
+                                    <a id="sheet-direct-link" href="#" target="_blank" rel="noopener noreferrer" class="shrink-0 px-3 py-1.5 rounded-xl bg-ggreen text-white text-xs font-semibold hover:bg-ggreen-dark transition">
+                                        Open Sheet ↗
+                                    </a>
+                                </div>
+                            </div>
                         </div>
 
-                        <pre id="gas-code-block" class="bg-gray-900 text-gray-100 p-4 rounded-2xl text-[11px] font-mono overflow-x-auto leading-relaxed max-h-96">/**
+                        <!-- Complete Google Apps Script Backend Code (Code.gs) -->
+                        <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-4">
+                            <div class="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <span class="px-2.5 py-1 rounded-full bg-gyellow-light text-gyellow-dark font-bold text-[10px] uppercase tracking-wider">Required Backend Setup</span>
+                                    <h3 class="font-display font-bold text-base text-gray-800 mt-1">Google Apps Script (`Code.gs`) — Auto-Creates Sheet + Google Drive Archive Folder</h3>
+                                    <ol class="text-xs text-gray-600 list-decimal list-inside space-y-0.5 mt-1">
+                                        <li>Replace all code in your Apps Script <code>Code.gs</code> with the updated script below and click <strong>Save (💾)</strong>.</li>
+                                        <li>Select <strong><code>setupSheets</code></strong> in the top toolbar dropdown and click <strong>Run</strong> once (authorizes Google Sheets &amp; Google Drive storage).</li>
+                                        <li>Click <strong>Deploy &gt; New deployment &gt; Web app</strong> (Execute as: <em>Me</em>, Who has access: <em>Anyone</em>) and copy the Web App URL into <code>DEFAULT_GAS_WEBAPP_URL</code>.</li>
+                                    </ol>
+                                </div>
+                                <button onclick="copyGasBackendCode()" class="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-semibold flex items-center gap-2 transition">
+                                    <i class="ph-bold ph-copy"></i> Copy `Code.gs`
+                                </button>
+                            </div>
+
+                            <pre id="gas-code-block" class="bg-gray-900 text-gray-100 p-4 rounded-2xl text-[11px] font-mono overflow-x-auto leading-relaxed max-h-96">/**
  * DOCTRACK QR - GOOGLE SHEETS & GOOGLE DRIVE BACKEND (Code.gs)
  * Supports QR Routing, Bottleneck Tracking, and End-of-Process Google Drive Document Storage.
  */
@@ -1069,6 +1017,49 @@ function doPost(e) {
       return jsonResponse({ status: "success" });
     }
 
+    if (action === "deleteUser") {
+      if (String(payload.adminCode) !== String(currentSecret)) {
+        return jsonResponse({ status: "unauthorized", message: "Invalid Admin Code" });
+      }
+      const targetUserId = String(payload.userId || "");
+      const userSheet = ss.getSheetByName("Users");
+      if (userSheet) {
+        const userData = userSheet.getDataRange().getValues();
+        for (let i = userData.length - 1; i >= 1; i--) {
+          if (String(userData[i][0]) === targetUserId) {
+            userSheet.deleteRow(i + 1);
+          }
+        }
+      }
+      return jsonResponse({ status: "success", deletedUserId: targetUserId });
+    }
+
+    if (action === "deleteDocument") {
+      if (String(payload.adminCode) !== String(currentSecret)) {
+        return jsonResponse({ status: "unauthorized", message: "Invalid Admin Code" });
+      }
+      const targetId = String(payload.trackingId || "");
+      const docSheet = ss.getSheetByName("Documents");
+      if (docSheet) {
+        const docData = docSheet.getDataRange().getValues();
+        for (let i = docData.length - 1; i >= 1; i--) {
+          if (String(docData[i][0]) === targetId) {
+            docSheet.deleteRow(i + 1);
+          }
+        }
+      }
+      const logSheet = ss.getSheetByName("TrackingLogs");
+      if (logSheet) {
+        const logData = logSheet.getDataRange().getValues();
+        for (let j = logData.length - 1; j >= 1; j--) {
+          if (String(logData[j][1]) === targetId) {
+            logSheet.deleteRow(j + 1);
+          }
+        }
+      }
+      return jsonResponse({ status: "success", deletedId: targetId });
+    }
+
     return jsonResponse({ status: "error", message: "Invalid action: " + action });
   } catch (err) {
     return jsonResponse({ status: "error", message: err.toString() });
@@ -1091,7 +1082,121 @@ function jsonResponse(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
 }</pre>
+                        </div>
                     </div>
+
+                    <!-- TAB 2: USERS & OFFICES -->
+                    <div id="admintab-pane-users" class="admin-tab-pane hidden space-y-6">
+                        <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-5">
+                            <div class="flex items-center justify-between gap-2.5">
+                                <div class="flex items-center gap-2.5">
+                                    <i class="ph-duotone ph-users-three text-2xl text-gblue"></i>
+                                    <div>
+                                        <h3 class="font-display font-bold text-base text-gray-800">Registered Users &amp; Receiving Offices</h3>
+                                        <p class="text-xs text-gray-500">Saved directly to the "Users" tab in your Google Sheet</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <form onsubmit="handleAddUser(event)" class="grid grid-cols-1 sm:grid-cols-12 gap-2.5 bg-gsurface p-3.5 rounded-2xl border border-gray-200/70">
+                                <input type="text" id="new-user-name" required placeholder="Full Name (e.g. Juan Cruz)" class="sm:col-span-5 px-3 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-gblue">
+                                <input type="text" id="new-user-office" required placeholder="Office / Unit (e.g. CID)" class="sm:col-span-4 px-3 py-2 rounded-xl border border-gray-300 text-xs focus:outline-none focus:border-gblue">
+                                <button type="submit" class="sm:col-span-3 py-2 px-3 rounded-xl bg-gblue text-white text-xs font-semibold hover:bg-gblue-dark flex items-center justify-center gap-1 transition">
+                                    <i class="ph-bold ph-user-plus"></i> Add User
+                                </button>
+                            </form>
+
+                            <div id="admin-users-list" class="space-y-2 max-h-80 overflow-y-auto pr-1">
+                                <!-- Populated via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 3: MANAGE DOCUMENTS -->
+                    <div id="admintab-pane-docs" class="admin-tab-pane hidden space-y-6">
+                        <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-4">
+                            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                <div class="flex items-center gap-2.5">
+                                    <div class="w-10 h-10 rounded-2xl bg-gred-light text-gred flex items-center justify-center shrink-0">
+                                        <i class="ph-duotone ph-trash text-2xl"></i>
+                                    </div>
+                                    <div>
+                                        <h3 class="font-display font-bold text-base text-gray-800">Delete Specific Document / File</h3>
+                                        <p class="text-xs text-gray-500">Permanently remove a specific document and its routing logs from the Google Sheet database</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center bg-gsurface border border-gray-200 rounded-xl px-3 py-2 w-full sm:w-72">
+                                    <i class="ph ph-magnifying-glass text-gray-400 text-sm mr-2"></i>
+                                    <input type="text" id="admin-doc-search" oninput="renderAdminDocuments()" placeholder="Search ID, title, or office..." class="bg-transparent text-xs w-full focus:outline-none text-gray-700">
+                                </div>
+                            </div>
+
+                            <div id="admin-docs-list" class="space-y-2 max-h-96 overflow-y-auto pr-1">
+                                <!-- Populated via JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB 4: LOGOS & SECURITY -->
+                    <div id="admintab-pane-security" class="admin-tab-pane hidden space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Change Admin Password Card -->
+                            <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-4">
+                                <div class="flex items-center gap-2.5">
+                                    <i class="ph-duotone ph-key text-2xl text-gyellow-dark"></i>
+                                    <div>
+                                        <h3 class="font-display font-bold text-base text-gray-800">Change Admin Passcode</h3>
+                                        <p class="text-xs text-gray-500">Updates your hidden passcode in Google Apps Script Properties</p>
+                                    </div>
+                                </div>
+
+                                <form onsubmit="handleChangeAdminPassword(event)" class="space-y-3">
+                                    <input type="password" id="cp-current" required placeholder="Current Passcode" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-mono focus:outline-none focus:border-gblue">
+                                    <input type="password" id="cp-new" required placeholder="New Passcode (min 4 chars)" class="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-mono focus:outline-none focus:border-gblue">
+                                    <button type="submit" class="w-full py-2.5 px-3 rounded-xl bg-gray-900 hover:bg-black text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                                        <i class="ph-bold ph-check"></i> Update Passcode
+                                    </button>
+                                </form>
+                            </div>
+
+                            <!-- Bottleneck Threshold Card -->
+                            <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-4">
+                                <div class="flex items-center gap-2.5">
+                                    <i class="ph-duotone ph-hourglass-high text-2xl text-gred"></i>
+                                    <div>
+                                        <h3 class="font-display font-bold text-base text-gray-800">Office Bottleneck / Lapse Time Limit</h3>
+                                        <p class="text-xs text-gray-500">Notify users when a document stays idle in one office longer than this limit</p>
+                                    </div>
+                                </div>
+                                <div class="space-y-3">
+                                    <div class="flex items-center gap-2.5">
+                                        <input type="number" id="lapse-hours-input" min="0.1" step="0.5" value="24" class="w-28 px-3 py-2 rounded-xl border border-gray-300 text-xs font-mono font-bold focus:outline-none focus:border-gblue">
+                                        <span class="text-xs font-semibold text-gray-600">Hours max per office</span>
+                                    </div>
+                                    <button type="button" onclick="saveLapseTimeThreshold()" class="w-full py-2.5 px-4 rounded-xl bg-gred text-white text-xs font-semibold hover:bg-gred-dark transition">
+                                        Save Bottleneck Limit
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Seal Customizer Card -->
+                        <div class="bg-white rounded-3xl border border-gray-200/80 p-5 sm:p-6 google-shadow space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center gap-2.5">
+                                    <i class="ph-duotone ph-seal-check text-2xl text-gblue"></i>
+                                    <div>
+                                        <h3 class="font-display font-bold text-base text-gray-800">Permanent Official DepEd Seal Logos</h3>
+                                        <p class="text-xs text-gray-500">Configure official seals embedded on every printed slip</p>
+                                    </div>
+                                </div>
+                                <button onclick="openLogoCustomizer()" class="px-4 py-2 rounded-xl bg-gblue-light text-gblue text-xs font-bold hover:bg-gblue/20 transition">
+                                    Open Seal Customizer ↗
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </section>
 
@@ -1128,14 +1233,14 @@ function jsonResponse(obj) {
                 </button>
             </div>
 
-            <!-- Active Scanner Account Reminder Card (Clean, no redundant text, auto acronym) -->
+            <!-- Active Scanner Account Reminder Card -->
             <div class="bg-gblue-light border border-gblue/40 rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-2xs">
                 <div class="flex items-center gap-3 min-w-0">
                     <div class="w-10 h-10 rounded-xl bg-gblue text-white flex items-center justify-center shrink-0">
                         <i class="ph-duotone ph-identification-badge text-xl"></i>
                     </div>
                     <div class="min-w-0">
-                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-gblue-dark block">Active Scanner Operator</span>
+                        <span class="text-[10px] font-extrabold uppercase tracking-wider text-gblue-dark block">Active Operator</span>
                         <div class="flex items-center gap-2 mt-0.5">
                             <h4 id="modal-scanner-name" class="font-display font-bold text-sm text-gray-900 truncate">Records Officer</h4>
                             <span id="modal-scanner-badge" class="px-2 py-0.5 rounded bg-gblue text-white font-mono font-bold text-[10px] shrink-0">RECORDS</span>
@@ -1406,15 +1511,11 @@ function jsonResponse(obj) {
         /*************************************************************************
          * APPLICATION STATE & PERMANENT EMBEDDED CONFIG
          *************************************************************************/
-        // PASTE YOUR DEPLOYED GOOGLE APPS SCRIPT '/exec' URL BELOW SO ALL DEVICES CONNECT AUTOMATICALLY:
-        const DEFAULT_GAS_WEBAPP_URL = "";
+        const HARDCODED_GAS_URL = (typeof DEFAULT_GAS_WEBAPP_URL !== 'undefined' &&
+            DEFAULT_GAS_WEBAPP_URL.trim().startsWith('https://script.google.com/'))
+            ? DEFAULT_GAS_WEBAPP_URL.trim()
+            : "";
 
-        const PERMANENT_LOGOS = {
-            depedSealDataUrl: "",
-            adnSealDataUrl: ""
-        };
-
-        // Check if URL parameter ?gas_url= is present so shared links auto-configure any new phone/PC
         const urlParams = new URLSearchParams(window.location.search);
         const paramGasUrl = urlParams.get('gas_url');
         if (paramGasUrl && paramGasUrl.startsWith('https://script.google.com/')) {
@@ -1432,11 +1533,13 @@ function jsonResponse(obj) {
         let modalHtml5QrScanner = null;
         let isAdminUnlocked = false;
         let unlockedAdminSecret = "";
+        let pendingDeleteDocId = null;
+        let pendingDeleteUserId = null;
         let pendingCompletionFileDataUrl = "";
         let lapseThresholdHours = parseFloat(localStorage.getItem('doctrack_lapse_hours') || '24');
         let isSyncInProgress = false;
 
-        let gasWebAppUrl = DEFAULT_GAS_WEBAPP_URL.trim() || localStorage.getItem('doctrack_gas_url') || "";
+        let gasWebAppUrl = HARDCODED_GAS_URL || localStorage.getItem('doctrack_gas_url') || "";
         let connectedSheetUrl = localStorage.getItem('doctrack_sheet_url') || "";
 
         let usersList = JSON.parse(localStorage.getItem('doctrack_users') || 'null') || [
@@ -1495,9 +1598,9 @@ function jsonResponse(obj) {
         }
 
         function copyShareableDeviceLink() {
-            const urlToShare = document.getElementById('gas-webapp-url')?.value.trim() || gasWebAppUrl;
+            const urlToShare = gasWebAppUrl;
             if (!urlToShare) {
-                showToast('Connect your Google Apps Script Web App URL first!', 'warning');
+                showToast('Google Apps Script Web App URL not configured!', 'warning');
                 return;
             }
             const baseUrl = window.location.href.split('?')[0];
@@ -1547,7 +1650,23 @@ function jsonResponse(obj) {
             }
             if (tabId === 'admin') {
                 renderAdminUsers();
+                renderAdminDocuments();
             }
+        }
+
+        function switchAdminTab(adminTabId) {
+            ['db', 'users', 'docs', 'security'].forEach(t => {
+                const pane = document.getElementById(`admintab-pane-${t}`);
+                const btn = document.getElementById(`admintab-btn-${t}`);
+                if (pane) pane.classList.toggle('hidden', t !== adminTabId);
+                if (btn) {
+                    btn.className = (t === adminTabId)
+                        ? "px-4 py-2 rounded-xl text-xs font-bold bg-gblue text-white transition flex items-center gap-2 shrink-0"
+                        : "px-4 py-2 rounded-xl text-xs font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 transition flex items-center gap-2 shrink-0";
+                }
+            });
+            if (adminTabId === 'users') renderAdminUsers();
+            if (adminTabId === 'docs') renderAdminDocuments();
         }
 
         /*************************************************************************
@@ -2051,6 +2170,7 @@ function jsonResponse(obj) {
             clearCheckedDocTypes();
             regenerateDraftId();
             updateLiveTemplatePreview(newDoc);
+            renderAdminDocuments();
         }
 
         /*************************************************************************
@@ -2519,7 +2639,7 @@ function jsonResponse(obj) {
                 if (label) label.textContent = "Google Sheet Live";
                 if (sublabel) sublabel.textContent = "Synced with Apps Script";
                 if (mobileText) {
-                    mobileText.textContent = "● Google Sheet Connected";
+                    mobileText.textContent = "● Connected";
                     mobileText.className = "text-[10px] text-ggreen font-medium";
                 }
                 if (connectedSheetUrl) {
@@ -2535,9 +2655,9 @@ function jsonResponse(obj) {
             } else {
                 if (dot) dot.className = "w-2.5 h-2.5 rounded-full bg-gyellow shrink-0";
                 if (label) label.textContent = "Offline / Local Cache";
-                if (sublabel) sublabel.textContent = "Connect GAS in Admin";
+                if (sublabel) sublabel.textContent = "Check URL connection";
                 if (mobileText) {
-                    mobileText.textContent = "● Local Cache Mode";
+                    mobileText.textContent = "● Local Cache";
                     mobileText.className = "text-[10px] text-gyellow-dark font-medium";
                 }
             }
@@ -2546,15 +2666,7 @@ function jsonResponse(obj) {
         async function verifyAdminAccess(e) {
             e.preventDefault();
             const codeInput = document.getElementById('admin-passcode-input').value.trim();
-            const urlFromLock = document.getElementById('lock-gas-url-input')?.value.trim();
             const btn = document.getElementById('btn-unlock-admin');
-
-            if (urlFromLock) {
-                gasWebAppUrl = urlFromLock;
-                localStorage.setItem('doctrack_gas_url', gasWebAppUrl);
-                const adminUrlInput = document.getElementById('gas-webapp-url');
-                if (adminUrlInput) adminUrlInput.value = gasWebAppUrl;
-            }
 
             if (gasWebAppUrl) {
                 if (btn) btn.textContent = "Verifying with Backend...";
@@ -2590,15 +2702,17 @@ function jsonResponse(obj) {
             document.getElementById('admin-lock-screen').classList.add('hidden');
             document.getElementById('admin-console-content').classList.remove('hidden');
             document.getElementById('admin-passcode-input').value = '';
-            const adminUrlInput = document.getElementById('gas-webapp-url');
-            if (adminUrlInput) adminUrlInput.value = gasWebAppUrl;
+            switchAdminTab('db');
             renderAdminUsers();
+            renderAdminDocuments();
             showToast('Admin Console Unlocked', 'success');
         }
 
         function lockAdminConsole() {
             isAdminUnlocked = false;
             unlockedAdminSecret = "";
+            pendingDeleteDocId = null;
+            pendingDeleteUserId = null;
             document.getElementById('admin-lock-screen').classList.remove('hidden');
             document.getElementById('admin-console-content').classList.add('hidden');
         }
@@ -2668,20 +2782,166 @@ function jsonResponse(obj) {
         function renderAdminUsers() {
             const container = document.getElementById('admin-users-list');
             if (!container) return;
-            container.innerHTML = usersList.map(u => `
-                <div class="flex items-center justify-between p-3 rounded-2xl bg-gsurface border border-gray-200/60">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-xl bg-gblue-light text-gblue font-bold text-xs flex items-center justify-center">
-                            ${escapeHtml(u.name.split(' ').map(n => n[0]).join('').substring(0,2))}
+            if (usersList.length === 0) {
+                container.innerHTML = `<p class="text-xs text-gray-400 p-4 text-center">No registered users found.</p>`;
+                return;
+            }
+            container.innerHTML = usersList.map(u => {
+                const isConfirming = (pendingDeleteUserId === u.id);
+                return `
+                    <div class="flex items-center justify-between p-3 rounded-2xl bg-gsurface border ${isConfirming ? 'border-gred bg-gred-light/20' : 'border-gray-200/60'}">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-gblue-light text-gblue font-bold text-xs flex items-center justify-center">
+                                ${escapeHtml(u.name.split(' ').map(n => n[0]).join('').substring(0,2))}
+                            </div>
+                            <div>
+                                <p class="text-xs font-bold text-gray-800">${escapeHtml(u.name)}</p>
+                                <p class="text-[11px] text-gray-500">${escapeHtml(u.office)}</p>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-xs font-bold text-gray-800">${escapeHtml(u.name)}</p>
-                            <p class="text-[11px] text-gray-500">${escapeHtml(u.office)}</p>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-[10px] font-mono text-gray-500">${u.id}</span>
+                            ${isConfirming ? `
+                                <button type="button" onclick="confirmDeleteUser('${u.id}')" class="px-2.5 py-1 rounded-xl bg-gred text-white text-[11px] font-bold">Yes</button>
+                                <button type="button" onclick="cancelDeleteUser()" class="px-2 py-1 rounded-xl bg-white border text-[11px] text-gray-600">No</button>
+                            ` : `
+                                <button type="button" onclick="promptDeleteUser('${u.id}')" class="p-1.5 rounded-xl hover:bg-gred-light text-gray-400 hover:text-gred transition" title="Delete User">
+                                    <i class="ph-bold ph-trash text-base"></i>
+                                </button>
+                            `}
                         </div>
                     </div>
-                    <span class="px-2.5 py-1 rounded-full bg-white border border-gray-200 text-[10px] font-mono text-gray-500">${u.id}</span>
-                </div>
-            `).join('');
+                `;
+            }).join('');
+        }
+
+        function promptDeleteUser(userId) {
+            if (usersList.length <= 1) {
+                showToast('You must keep at least one registered user/office.', 'warning');
+                return;
+            }
+            pendingDeleteUserId = userId;
+            renderAdminUsers();
+        }
+
+        function cancelDeleteUser() {
+            pendingDeleteUserId = null;
+            renderAdminUsers();
+        }
+
+        async function confirmDeleteUser(userId) {
+            pendingDeleteUserId = null;
+            usersList = usersList.filter(u => u.id !== userId);
+            if (activeUser.id === userId && usersList.length > 0) {
+                activeUser = usersList[0];
+            }
+            saveStateToLocalCache();
+            populateUserAndOfficeSelectors();
+            renderAdminUsers();
+
+            if (gasWebAppUrl) {
+                try {
+                    await callGasBackend({
+                        action: 'deleteUser',
+                        adminCode: unlockedAdminSecret || localAdminCode,
+                        userId: userId
+                    });
+                    showToast('Deleted user from Google Sheet.', 'success');
+                } catch (err) {}
+            } else {
+                showToast('Deleted user locally.', 'info');
+            }
+        }
+
+        function renderAdminDocuments() {
+            const container = document.getElementById('admin-docs-list');
+            if (!container) return;
+
+            const query = (document.getElementById('admin-doc-search')?.value || '').trim().toLowerCase();
+            const filtered = documentsList.filter(d => {
+                if (!query) return true;
+                return `${d.id} ${d.title} ${d.origin} ${d.currentOffice} ${d.status}`.toLowerCase().includes(query);
+            });
+
+            if (filtered.length === 0) {
+                container.innerHTML = `
+                    <div class="p-6 text-center rounded-2xl bg-gsurface border border-gray-200/60 text-xs text-gray-400">
+                        No matching documents found.
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = filtered.map(doc => {
+                const isConfirming = (pendingDeleteDocId === doc.id);
+                const statusColor = doc.status === 'COMPLETED' ? 'bg-ggreen-light text-ggreen' : 'bg-gyellow-light text-gyellow-dark';
+                return `
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-gsurface border ${isConfirming ? 'border-gred bg-gred-light/20' : 'border-gray-200/60'} transition">
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <span class="px-2 py-0.5 rounded-md bg-gblue-light text-gblue font-mono font-bold text-[11px]">${escapeHtml(doc.id)}</span>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${statusColor}">${escapeHtml(doc.status)}</span>
+                                <span class="text-[10px] text-gray-400 font-mono">${escapeHtml(doc.createdAt)}</span>
+                            </div>
+                            <p class="text-xs font-bold text-gray-800 truncate mt-1">${escapeHtml(doc.title)}</p>
+                            <p class="text-[11px] text-gray-500 truncate">Origin: ${escapeHtml(doc.origin)} • Current: ${escapeHtml(doc.currentOffice)}</p>
+                        </div>
+                        <div class="flex items-center gap-2 shrink-0">
+                            ${isConfirming ? `
+                                <span class="text-[11px] font-bold text-gred mr-1">Delete permanently?</span>
+                                <button type="button" onclick="confirmDeleteDocument('${doc.id}')" class="px-3 py-1.5 rounded-xl bg-gred hover:bg-gred-dark text-white text-xs font-bold flex items-center gap-1 shadow-2xs transition">
+                                    <i class="ph-bold ph-check"></i> Yes, Delete
+                                </button>
+                                <button type="button" onclick="cancelDeleteDocument()" class="px-2.5 py-1.5 rounded-xl bg-white border border-gray-300 hover:bg-gray-100 text-xs font-semibold text-gray-600 transition">
+                                    Cancel
+                                </button>
+                            ` : `
+                                <button type="button" onclick="openDocModal('${doc.id}')" class="px-2.5 py-1.5 rounded-xl bg-white border border-gray-200 hover:bg-gray-100 text-xs font-semibold text-gray-600 flex items-center gap-1 transition" title="Inspect Document">
+                                    <i class="ph-bold ph-eye"></i> View
+                                </button>
+                                <button type="button" onclick="promptDeleteDocument('${doc.id}')" class="px-3 py-1.5 rounded-xl bg-gred-light hover:bg-gred hover:text-white text-gred text-xs font-bold flex items-center gap-1 transition">
+                                    <i class="ph-bold ph-trash"></i> Delete
+                                </button>
+                            `}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function promptDeleteDocument(docId) {
+            pendingDeleteDocId = docId;
+            renderAdminDocuments();
+        }
+
+        function cancelDeleteDocument() {
+            pendingDeleteDocId = null;
+            renderAdminDocuments();
+        }
+
+        async function confirmDeleteDocument(docId) {
+            pendingDeleteDocId = null;
+            documentsList = documentsList.filter(d => d.id !== docId);
+            trackingLogs = trackingLogs.filter(l => l.trackingId !== docId);
+            saveStateToLocalCache();
+            renderAdminDocuments();
+            renderDashboard();
+
+            if (gasWebAppUrl) {
+                try {
+                    const res = await callGasBackend({
+                        action: 'deleteDocument',
+                        adminCode: unlockedAdminSecret || localAdminCode,
+                        trackingId: docId
+                    });
+                    if (res && res.status === 'success') {
+                        showToast(`Deleted ${docId} from Google Sheet database.`, 'success');
+                        syncWithBackend(true);
+                        return;
+                    }
+                } catch (err) {}
+            }
+            showToast(`Deleted ${docId} locally.`, 'info');
         }
 
         async function handleAddUser(e) {
@@ -2714,21 +2974,6 @@ function jsonResponse(obj) {
             officeEl.value = '';
             showToast(`Added ${newUser.name} (${newUser.office})`, 'success');
             if (gasWebAppUrl) syncWithBackend(true);
-        }
-
-        async function saveGasConnection() {
-            const url = document.getElementById('gas-webapp-url').value.trim();
-            if (!url) {
-                showToast('Please enter your Google Apps Script Web App URL (/exec)', 'warning');
-                return;
-            }
-            gasWebAppUrl = url;
-            localStorage.setItem('doctrack_gas_url', gasWebAppUrl);
-            const lockUrl = document.getElementById('lock-gas-url-input');
-            if (lockUrl) lockUrl.value = gasWebAppUrl;
-
-            showToast('Connecting & initializing Google Sheet tabs...', 'info');
-            await syncWithBackend(false);
         }
 
         async function syncWithBackend(silent = false) {
@@ -2815,8 +3060,10 @@ function jsonResponse(obj) {
                         }
                         saveStateToLocalCache();
                         renderDashboard();
+                        if (isAdminUnlocked) {
+                            renderAdminDocuments();
+                        }
 
-                        // If a document detail modal is currently open, refresh its timeline live
                         const detailModal = document.getElementById('doc-detail-modal');
                         if (activeModalDocId && detailModal && !detailModal.classList.contains('hidden')) {
                             openDocModal(activeModalDocId);
@@ -2886,10 +3133,6 @@ function jsonResponse(obj) {
         }
 
         window.onload = function () {
-            const lockUrl = document.getElementById('lock-gas-url-input');
-            if (lockUrl && gasWebAppUrl) lockUrl.value = gasWebAppUrl;
-            const adminUrl = document.getElementById('gas-webapp-url');
-            if (adminUrl && gasWebAppUrl) adminUrl.value = gasWebAppUrl;
             const lapseInput = document.getElementById('lapse-hours-input');
             if (lapseInput) lapseInput.value = lapseThresholdHours;
 
@@ -2899,7 +3142,6 @@ function jsonResponse(obj) {
             switchTab('dashboard');
             updateLiveTemplatePreview();
 
-            // Automatically sync with Google Sheet every 15 seconds in the background
             setInterval(() => {
                 if (gasWebAppUrl) {
                     syncWithBackend(true);
@@ -2908,7 +3150,6 @@ function jsonResponse(obj) {
                 }
             }, 15000);
 
-            // Immediately sync whenever user switches back to this browser tab or unlocks phone
             document.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible' && gasWebAppUrl) {
                     syncWithBackend(true);
