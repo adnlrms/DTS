@@ -245,10 +245,13 @@
                         </button>
                     </div>
 
-                    <button onclick="syncWithBackend()" class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gsurface border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100 active:scale-95 transition">
-                        <i id="sync-icon" class="ph-bold ph-arrows-clockwise text-gblue text-sm"></i>
-                        <span class="hidden sm:inline">Sync</span>
-                    </button>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <span id="last-synced-badge" class="hidden md:inline-block text-[10px] font-mono text-gray-400">Auto-Sync Active</span>
+                        <button onclick="syncWithBackend(false)" class="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gsurface border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-100 active:scale-95 transition">
+                            <i id="sync-icon" class="ph-bold ph-arrows-clockwise text-gblue text-sm"></i>
+                            <span class="hidden sm:inline">Sync</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- BOTTLENECK / LAPSE TIME NOTIFICATION BANNER -->
@@ -748,9 +751,18 @@
                                         <button onclick="saveGasConnection()" class="px-4 py-2.5 rounded-xl bg-ggreen hover:bg-ggreen-dark text-white text-xs font-semibold flex items-center gap-1.5 transition">
                                             <i class="ph-bold ph-plugs-connected"></i> Connect & Initialize Sheets
                                         </button>
+                                        <button onclick="copyShareableDeviceLink()" class="px-4 py-2.5 rounded-xl bg-gblue text-white hover:bg-gblue-dark text-xs font-semibold flex items-center gap-1.5 transition" title="Share this link so other phones/PCs connect automatically">
+                                            <i class="ph-bold ph-share-network"></i> Copy Multi-Device Access Link
+                                        </button>
                                         <button onclick="openLogoCustomizer()" class="px-4 py-2.5 rounded-xl bg-gblue-light text-gblue hover:bg-gblue/20 text-xs font-semibold flex items-center gap-1.5 transition">
                                             <i class="ph-bold ph-seal-check"></i> Embed Permanent Logos
                                         </button>
+                                    </div>
+
+                                    <div class="p-3 rounded-2xl bg-gblue-light/50 border border-gblue/20 text-[11px] text-gray-700 space-y-1">
+                                        <p class="font-bold text-gblue-dark flex items-center gap-1"><i class="ph-fill ph-devices"></i> How to let other devices view &amp; scan documents:</p>
+                                        <p>1. Click <strong>Copy Multi-Device Access Link</strong> above and send it to your staff, OR</p>
+                                        <p>2. Paste your Web App URL inside <code>DEFAULT_GAS_WEBAPP_URL</code> in the code so every device connects automatically without setup.</p>
                                     </div>
 
                                     <div id="sheet-link-box" class="hidden p-3 rounded-2xl bg-ggreen-light/60 border border-ggreen/30 flex items-center justify-between gap-2">
@@ -1394,10 +1406,20 @@ function jsonResponse(obj) {
         /*************************************************************************
          * APPLICATION STATE & PERMANENT EMBEDDED CONFIG
          *************************************************************************/
+        // PASTE YOUR DEPLOYED GOOGLE APPS SCRIPT '/exec' URL BELOW SO ALL DEVICES CONNECT AUTOMATICALLY:
+        const DEFAULT_GAS_WEBAPP_URL = "";
+
         const PERMANENT_LOGOS = {
             depedSealDataUrl: "",
             adnSealDataUrl: ""
         };
+
+        // Check if URL parameter ?gas_url= is present so shared links auto-configure any new phone/PC
+        const urlParams = new URLSearchParams(window.location.search);
+        const paramGasUrl = urlParams.get('gas_url');
+        if (paramGasUrl && paramGasUrl.startsWith('https://script.google.com/')) {
+            localStorage.setItem('doctrack_gas_url', paramGasUrl.trim());
+        }
 
         let localAdminCode = localStorage.getItem('doctrack_admin_code') || "ADMIN-2026";
         let currentTab = 'dashboard';
@@ -1412,8 +1434,9 @@ function jsonResponse(obj) {
         let unlockedAdminSecret = "";
         let pendingCompletionFileDataUrl = "";
         let lapseThresholdHours = parseFloat(localStorage.getItem('doctrack_lapse_hours') || '24');
+        let isSyncInProgress = false;
 
-        let gasWebAppUrl = localStorage.getItem('doctrack_gas_url') || "";
+        let gasWebAppUrl = DEFAULT_GAS_WEBAPP_URL.trim() || localStorage.getItem('doctrack_gas_url') || "";
         let connectedSheetUrl = localStorage.getItem('doctrack_sheet_url') || "";
 
         let usersList = JSON.parse(localStorage.getItem('doctrack_users') || 'null') || [
@@ -1464,10 +1487,28 @@ function jsonResponse(obj) {
             if (!gasWebAppUrl) throw new Error("Google Apps Script URL not configured");
             const res = await fetch(gasWebAppUrl, {
                 method: 'POST',
+                redirect: 'follow',
                 headers: { 'Content-Type': 'text/plain;charset=utf-8' },
                 body: JSON.stringify(payloadObj)
             });
             return await res.json();
+        }
+
+        function copyShareableDeviceLink() {
+            const urlToShare = document.getElementById('gas-webapp-url')?.value.trim() || gasWebAppUrl;
+            if (!urlToShare) {
+                showToast('Connect your Google Apps Script Web App URL first!', 'warning');
+                return;
+            }
+            const baseUrl = window.location.href.split('?')[0];
+            const shareLink = `${baseUrl}?gas_url=${encodeURIComponent(urlToShare)}`;
+            const temp = document.createElement('textarea');
+            temp.value = shareLink;
+            document.body.appendChild(temp);
+            temp.select();
+            document.execCommand('copy');
+            document.body.removeChild(temp);
+            showToast('Copied Multi-Device Access Link! Anyone opening it connects automatically.', 'success');
         }
 
         /*************************************************************************
@@ -1993,6 +2034,7 @@ function jsonResponse(obj) {
                 try {
                     await callGasBackend({ action: 'createDocument', document: newDoc });
                     showToast(`Saved ${newDoc.id} to Google Sheet Database!`, 'success');
+                    syncWithBackend(true);
                 } catch (err) {
                     showToast(`Saved ${newDoc.id} locally. Sync when online.`, 'warning');
                 }
@@ -2014,7 +2056,10 @@ function jsonResponse(obj) {
         /*************************************************************************
          * SCANNER POPUP MODAL (WITH UNIQUE ANIMATED LASER BEAM)
          *************************************************************************/
-        function openScanModalWithAnimation() {
+        async function openScanModalWithAnimation() {
+            if (gasWebAppUrl) {
+                await syncWithBackend(true);
+            }
             populateSimulatorDropdown();
             const modal = document.getElementById('scan-popup-modal');
             modal.classList.remove('hidden');
@@ -2076,8 +2121,13 @@ function jsonResponse(obj) {
             if (btnStop) btnStop.classList.add('hidden');
         }
 
-        function processScannedCode(code) {
-            const doc = documentsList.find(d => d.id.toUpperCase() === code.toUpperCase());
+        async function processScannedCode(code) {
+            let doc = documentsList.find(d => d.id.toUpperCase() === code.toUpperCase());
+            if (!doc && gasWebAppUrl) {
+                showToast(`Fetching ${code} from Google Sheet...`, 'info');
+                await syncWithBackend(true);
+                doc = documentsList.find(d => d.id.toUpperCase() === code.toUpperCase());
+            }
             if (!doc) {
                 showToast(`No document found matching QR: ${code}`, 'error');
                 return;
@@ -2202,6 +2252,7 @@ function jsonResponse(obj) {
             closeScannedModal();
             showToast(`Updated ${doc.id} → ${selectedAction}`, 'success');
             openDocModal(doc.id);
+            if (gasWebAppUrl) syncWithBackend(true);
         }
 
         /*************************************************************************
@@ -2662,6 +2713,7 @@ function jsonResponse(obj) {
             nameEl.value = '';
             officeEl.value = '';
             showToast(`Added ${newUser.name} (${newUser.office})`, 'success');
+            if (gasWebAppUrl) syncWithBackend(true);
         }
 
         async function saveGasConnection() {
@@ -2676,16 +2728,22 @@ function jsonResponse(obj) {
             if (lockUrl) lockUrl.value = gasWebAppUrl;
 
             showToast('Connecting & initializing Google Sheet tabs...', 'info');
-            await syncWithBackend();
+            await syncWithBackend(false);
         }
 
-        async function syncWithBackend() {
+        async function syncWithBackend(silent = false) {
+            if (isSyncInProgress) return;
             const icon = document.getElementById('sync-icon');
-            if (icon) icon.classList.add('animate-spin');
+            if (icon && !silent) icon.classList.add('animate-spin');
 
             if (gasWebAppUrl) {
+                isSyncInProgress = true;
                 try {
-                    const response = await fetch(`${gasWebAppUrl}?action=getAll`);
+                    const separator = gasWebAppUrl.includes('?') ? '&' : '?';
+                    const response = await fetch(`${gasWebAppUrl}${separator}action=getAll&t=${Date.now()}`, {
+                        method: 'GET',
+                        redirect: 'follow'
+                    });
                     const data = await response.json();
                     if (data && data.status === 'success') {
                         updateConnectionUI(true, data.sheetUrl || "");
@@ -2733,13 +2791,14 @@ function jsonResponse(obj) {
                             }));
                         }
                         if (Array.isArray(data.users) && data.users.length > 0) {
+                            const prevActiveId = activeUser ? activeUser.id : null;
                             usersList = data.users.map(u => ({
                                 id: String(u.UserID || ''),
                                 name: String(u.Name || ''),
                                 office: String(u.Office || ''),
                                 role: String(u.Role || 'Officer')
                             }));
-                            activeUser = usersList[0];
+                            activeUser = usersList.find(u => u.id === prevActiveId) || usersList[0];
                             populateUserAndOfficeSelectors();
                             renderAdminUsers();
                         }
@@ -2756,10 +2815,27 @@ function jsonResponse(obj) {
                         }
                         saveStateToLocalCache();
                         renderDashboard();
-                        showToast('Synced live with Google Sheet Database!', 'success');
+
+                        // If a document detail modal is currently open, refresh its timeline live
+                        const detailModal = document.getElementById('doc-detail-modal');
+                        if (activeModalDocId && detailModal && !detailModal.classList.contains('hidden')) {
+                            openDocModal(activeModalDocId);
+                        }
+
+                        const syncBadge = document.getElementById('last-synced-badge');
+                        if (syncBadge) {
+                            const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                            syncBadge.textContent = `Synced ${nowTime}`;
+                        }
+
+                        if (!silent) {
+                            showToast('Synced live with Google Sheet Database!', 'success');
+                        }
                     }
                 } catch (err) {
                     updateConnectionUI(false);
+                } finally {
+                    isSyncInProgress = false;
                 }
             } else {
                 renderDashboard();
@@ -2767,7 +2843,7 @@ function jsonResponse(obj) {
 
             setTimeout(() => {
                 if (icon) icon.classList.remove('animate-spin');
-            }, 500);
+            }, 400);
         }
 
         function copyGasBackendCode() {
@@ -2823,13 +2899,25 @@ function jsonResponse(obj) {
             switchTab('dashboard');
             updateLiveTemplatePreview();
 
+            // Automatically sync with Google Sheet every 15 seconds in the background
             setInterval(() => {
-                if (currentTab === 'dashboard') renderDashboard();
-            }, 60000);
+                if (gasWebAppUrl) {
+                    syncWithBackend(true);
+                } else if (currentTab === 'dashboard') {
+                    renderDashboard();
+                }
+            }, 15000);
+
+            // Immediately sync whenever user switches back to this browser tab or unlocks phone
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible' && gasWebAppUrl) {
+                    syncWithBackend(true);
+                }
+            });
 
             if (gasWebAppUrl) {
                 updateConnectionUI(true, connectedSheetUrl);
-                syncWithBackend();
+                syncWithBackend(true);
             } else {
                 updateConnectionUI(false);
             }
