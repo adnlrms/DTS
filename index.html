@@ -13,7 +13,7 @@
          HARDCODED GOOGLE APPS SCRIPT WEB APP URL (/exec)
          ===================================================================== -->
     <script>
-        const DEFAULT_GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbwXvW9HVOo8N-aWq2KAXZ3Tk9FZglBNNK_cMRZg7BXYEiwwhD18AT3Oi0-clQfR4aNnxw/exec";
+        const DEFAULT_GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxZ1wT23G0vSLBsx8p1CHZkLcw80zEAtYnMxMKshHDjZFHvQ4KUiL-U5_DOmRvLtyI8Wg/exec";
 
         const PERMANENT_LOGOS = {
             depedSealDataUrl: "https://drive.google.com/file/d/1AnqM3tXDQgf7cSODB_LoHxYUJbM6B5at/view?usp=sharing",
@@ -1126,7 +1126,7 @@
                 </div>
                 <div class="grid grid-cols-2 sm:flex items-center gap-2 sm:ml-auto">
                     <button type="button" id="modal-btn-fix-route" onclick="openRouteEditor(activeModalDocId)" class="hidden col-span-2 justify-center whitespace-nowrap px-4 py-2.5 rounded-xl bg-white border border-gblue/40 hover:bg-gblue-light text-xs font-semibold text-gblue flex items-center gap-1.5 transition">
-                        <i class="ph-bold ph-path"></i> Fix Route
+                        <i class="ph-bold ph-path"></i> Edit Route
                     </button>
                     <button type="button" id="modal-btn-print-slip" onclick="loadDocToPrintSlip()" class="justify-center whitespace-nowrap px-4 py-2.5 rounded-xl bg-white border border-gray-300 hover:bg-gray-100 text-xs font-semibold text-gray-700 flex items-center gap-1.5 transition">
                         <i class="ph-bold ph-printer text-gblue"></i> Print Routing Slip
@@ -1261,12 +1261,12 @@
         </button>
     </nav>
 
-    <!-- FIX ROUTE (ADMIN) -->
+    <!-- EDIT ROUTE (ADMIN) -->
     <div id="route-edit-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[55] hidden items-end sm:items-center justify-center p-0 sm:p-4 no-print">
         <div class="modal-panel bg-white rounded-t-3xl sm:rounded-3xl max-w-lg w-full p-4 sm:p-6 space-y-4 google-shadow overflow-y-auto">
             <div class="flex items-start justify-between gap-3">
                 <div>
-                    <h3 class="font-display font-bold text-base text-gray-800">Fix Document Route</h3>
+                    <h3 class="font-display font-bold text-base text-gray-800">Edit Routing Path</h3>
                     <p class="text-xs text-gray-500"><span id="route-edit-id" class="font-mono font-bold text-gblue"></span> — <span id="route-edit-title"></span></p>
                 </div>
                 <button type="button" onclick="closeRouteEditor()" class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-400"><i class="ph-bold ph-x text-lg"></i></button>
@@ -1350,6 +1350,9 @@
  *     own step (uploadCompletionFile) before the scan is saved. Archive folders
  *     are remembered, so Drive is not searched on every upload.
  *
+ *   - ADMIN OVERRIDE (v3.4): the System Administrator can Receive, Route, Complete
+ *     or Return a document at any step; the history shows the office where it
+ *     happened, "(ADMIN OVERRIDE)" and the Administrator's name.
  *   - OLDER DOCUMENTS (v3.3): documents created by earlier versions (no saved
  *     route, office acronyms, old status words) are understood automatically.
  *     Admin > Manage Documents > "Check & Repair Old Documents" fixes them in the
@@ -1642,10 +1645,16 @@ function handleWrite_(action, payload, ctx) {
       return { status: 'conflict', message: 'Another office updated this document a moment ago.' };
     }
 
-    const officeName = ctx.user ? String(ctx.user.Office || '') : String(s.office || 'SYSTEM ADMINISTRATOR');
-    const handledBy = ctx.user ? String(ctx.user.Name || '') : String(s.handledBy || 'System Administrator');
+    let officeName = ctx.user ? String(ctx.user.Office || '') : String(s.office || 'SYSTEM ADMINISTRATOR');
+    let handledBy = ctx.user ? String(ctx.user.Name || '') : String(s.handledBy || 'System Administrator');
     const expectedOffice = route[currentIdx] || String(values[6] || '');
     const isMyTurn = norm_(officeName) === norm_(expectedOffice);
+    // Admin acting at another office's step: record it under that office, clearly marked
+    const isAdminOverride = ctx.isAdmin && !isMyTurn;
+    if (isAdminOverride) {
+      officeName = expectedOffice || officeName;
+      handledBy = (ctx.user ? String(ctx.user.Name || '') + ' (System Administrator)' : 'System Administrator');
+    }
 
     let baseIdx = currentIdx;
     let isOverride = false;
@@ -1671,7 +1680,8 @@ function handleWrite_(action, payload, ctx) {
     const fileUrl = ctx.uploadedFile ? ctx.uploadedFile.url : '';
     let remarks = String(s.remarks || ('Processed at ' + officeName));
     if (isOverride) remarks = '[SEQUENCE OVERRIDDEN] Reason: ' + String(s.overrideReason).trim() + ' — ' + remarks;
-    const logAction = isOverride ? actionStatus + ' (OVERRIDE)' : actionStatus;
+    if (isAdminOverride) remarks = '[ADMIN OVERRIDE] ' + remarks;
+    const logAction = isOverride ? actionStatus + ' (OVERRIDE)' : (isAdminOverride ? actionStatus + ' (ADMIN OVERRIDE)' : actionStatus);
 
     if (nextIdx !== currentIdx || currentStatus !== newStatus || !meta.arrivedAtMs) meta.arrivedAtMs = Date.now();
     meta.currentRouteIndex = nextIdx;
@@ -3440,7 +3450,7 @@ function text_(str) {
             if (!container) return;
             container.innerHTML = '';
             if (typeof QRCode === 'undefined') return;
-            new QRCode(container, { text: trackingId, width: 72, height: 72, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
+            new QRCode(container, { text: trackingId, width: 84, height: 84, colorDark: "#000000", colorLight: "#ffffff", correctLevel: QRCode.CorrectLevel.M });
         }
 
         function syncTemplateTitleInput(val) {
@@ -3770,33 +3780,28 @@ function text_(str) {
                 if (startBtn) startBtn.classList.add('hidden');
                 if (stopBtn) stopBtn.classList.remove('hidden');
 
-                modalHtml5QrScanner = new Html5Qrcode("modal-qr-reader");
-                const scanConfig = {
-                    fps: 20,
-                    qrbox: function(viewfinderWidth, viewfinderHeight) {
-                        const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                        const boxSize = Math.max(150, Math.floor(minEdge * 0.75));
-                        return { width: boxSize, height: boxSize };
-                    },
-                    aspectRatio: 1.0
+                // Read QR codes only, anywhere in the picture; use the phone's built-in reader when available
+                const readerOptions = { verbose: false, experimentalFeatures: { useBarCodeDetectorIfSupported: true } };
+                if (typeof Html5QrcodeSupportedFormats !== 'undefined') readerOptions.formatsToSupport = [Html5QrcodeSupportedFormats.QR_CODE];
+                modalHtml5QrScanner = new Html5Qrcode("modal-qr-reader", readerOptions);
+                const sharp = { width: { ideal: 1280 }, height: { ideal: 720 } };
+                // No "qrbox": the whole camera picture is searched, so the QR does not have to be centred
+                const cfg = (videoConstraints) => videoConstraints ? { fps: 15, videoConstraints } : { fps: 15 };
+                const tryStart = async (cameraIdOrConfig, videoConstraints) => {
+                    try {
+                        await modalHtml5QrScanner.start(cameraIdOrConfig, cfg(videoConstraints), onQrCodeDecodedSuccess, () => {});
+                        return true;
+                    } catch (err) {
+                        lastCameraError = err;
+                        try { if (modalHtml5QrScanner.isScanning) await modalHtml5QrScanner.stop(); } catch (e) {}
+                        return false;
+                    }
                 };
-
+                let lastCameraError = null;
                 let started = false;
 
-                if (forceCameraId) {
-                    try {
-                        await modalHtml5QrScanner.start(forceCameraId, scanConfig, onQrCodeDecodedSuccess, () => {});
-                        started = true;
-                    } catch (e1) {}
-                }
-
-                if (!started) {
-                    try {
-                        await modalHtml5QrScanner.start({ facingMode: "environment" }, scanConfig, onQrCodeDecodedSuccess, () => {});
-                        started = true;
-                    } catch (e2) {}
-                }
-
+                if (forceCameraId) started = await tryStart(forceCameraId, { deviceId: { exact: forceCameraId }, ...sharp });
+                if (!started) started = await tryStart({ facingMode: 'environment' }, { facingMode: { ideal: 'environment' }, ...sharp });
                 if (!started) {
                     try {
                         const devices = await Html5Qrcode.getCameras();
@@ -3804,21 +3809,27 @@ function text_(str) {
                             availableCamerasList = devices;
                             const backIdx = devices.findIndex(d => /back|rear|environment/i.test(d.label || ''));
                             currentCameraIndex = backIdx !== -1 ? backIdx : 0;
-                            await modalHtml5QrScanner.start(devices[currentCameraIndex].id, scanConfig, onQrCodeDecodedSuccess, () => {});
-                            started = true;
+                            started = await tryStart(devices[currentCameraIndex].id, null);
                         }
-                    } catch (e3) {}
+                    } catch (e3) { lastCameraError = e3; }
                 }
+                if (!started) started = await tryStart({ facingMode: 'user' }, null);
+                if (!started) throw (lastCameraError || new Error('No camera could be started'));
 
-                if (!started) {
-                    await modalHtml5QrScanner.start({ facingMode: "user" }, scanConfig, onQrCodeDecodedSuccess, () => {});
-                    started = true;
-                }
-
+                // Keep the picture sharp on phones that support continuous focus
+                try { await modalHtml5QrScanner.applyVideoConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch (e) {}
+                if (statusText) statusText.textContent = 'Point the camera at the QR code on the slip';
                 if (quickControls) quickControls.classList.remove('hidden');
             } catch (err) {
                 if (placeholder) placeholder.classList.remove('hidden');
-                if (statusText) statusText.textContent = 'Camera blocked or unavailable. Use "Scan QR Image" or type the Tracking ID below.';
+                const why = String((err && (err.name || err.message)) || err || '');
+                let reason = 'Camera unavailable.';
+                if (!window.isSecureContext) reason = 'The camera only works when DocTrack is opened from an https:// address (not a preview window or a saved file).';
+                else if (/NotAllowed|Permission/i.test(why)) reason = 'Camera permission was blocked. Allow the camera in the browser\'s address bar, then tap Start Camera.';
+                else if (/NotFound|Overconstrained|DevicesNotFound/i.test(why)) reason = 'No camera was found on this device.';
+                else if (/NotSupported|not supported/i.test(why)) reason = 'This browser window does not allow the camera (for example a Messenger/Facebook in-app browser or a preview). Open DocTrack in Chrome or Safari.';
+                else if (/NotReadable|TrackStart|in use/i.test(why)) reason = 'The camera is being used by another app. Close it and tap Start Camera.';
+                if (statusText) statusText.textContent = reason + ' You can also use "Scan QR Image" or type the Tracking ID below.';
                 if (startBtn) startBtn.classList.remove('hidden');
                 if (stopBtn) stopBtn.classList.add('hidden');
                 if (quickControls) quickControls.classList.add('hidden');
@@ -4448,13 +4459,15 @@ function text_(str) {
                 submitBtn?.classList.add('hidden');
             } else if (isSystemAdmin && !isMyTurn) {
                 seqNotice.className = "p-3.5 rounded-2xl bg-gblue-light border border-gblue/40 text-xs text-gblue-dark font-bold";
-                seqNotice.innerHTML = `🛡️ <strong>System Administrator Mode:</strong> Full authority enabled to receive, route, or complete this document on behalf of <strong>${escapeHtml(expectedOffice)}</strong>.`;
+                seqNotice.innerHTML = `🛡️ <strong>ADMIN OVERRIDE:</strong> this document is waiting at <strong>${escapeHtml(expectedOffice)}</strong>. As System Administrator you may Receive, Approve &amp; Route, Complete (with scanned PDF) or Return it on that office's behalf. It is recorded in the history as an Admin override.
+                    <div class="mt-2"><button type="button" onclick="routeEditReturnToScan=true; closeScannedModal(); openRouteEditor(${jsArg(doc.id)})" class="px-3 py-1.5 rounded-lg bg-white border border-gblue/40 text-gblue text-[11px] font-bold">Edit Route first</button></div>`;
                 actionOptsWrap?.classList.remove('hidden');
                 overrideSection?.classList.add('hidden');
                 submitBtn?.classList.remove('hidden');
             } else if (isMyTurn) {
                 seqNotice.className = "p-3.5 rounded-2xl bg-ggreen-light border border-ggreen/40 text-xs text-ggreen font-bold";
-                seqNotice.innerHTML = `✅ It is your office's turn in the sequential route (${escapeHtml(getOfficeAcronym(userOffice))}). You may process and approve this document.`;
+                seqNotice.innerHTML = `✅ It is your office's turn in the sequential route (${escapeHtml(getOfficeAcronym(userOffice))}). You may process and approve this document.` +
+                    (isSystemAdmin ? `<div class="mt-2"><button type="button" onclick="routeEditReturnToScan=true; closeScannedModal(); openRouteEditor(${jsArg(doc.id)})" class="px-3 py-1.5 rounded-lg bg-white border border-gblue/40 text-gblue text-[11px] font-bold">Edit Route</button></div>` : '');
                 actionOptsWrap?.classList.remove('hidden');
                 overrideSection?.classList.add('hidden');
                 submitBtn?.classList.remove('hidden');
@@ -4466,7 +4479,7 @@ function text_(str) {
                 submitBtn?.classList.remove('hidden');
             } else {
                 seqNotice.className = "p-3.5 rounded-2xl bg-gred-light border border-gred/40 text-xs text-gred-dark font-bold";
-                seqNotice.innerHTML = `🔒 View-Only Mode: Your office (${escapeHtml(userOffice)}) is NOT tagged in this document's route. You cannot scan, route, or print this document until it is marked COMPLETED. If this office should handle it, ask the System Administrator to use <strong>Fix Route</strong>.`;
+                seqNotice.innerHTML = `🔒 View-Only Mode: Your office (${escapeHtml(userOffice)}) is NOT tagged in this document's route. You cannot scan, route, or print this document until it is marked COMPLETED. If this office should handle it, ask the System Administrator to use <strong>Edit Route</strong>.`;
                 actionOptsWrap?.classList.add('hidden');
                 overrideSection?.classList.add('hidden');
                 submitBtn?.classList.add('hidden');
@@ -5272,7 +5285,7 @@ function text_(str) {
                     </div>
                     <div class="flex items-center gap-2 shrink-0">
                         ${(d.status !== 'COMPLETED') ? `<button type="button" onclick="openRouteEditor(${jsArg(d.id)})" class="px-3 py-1.5 rounded-xl bg-white border border-gray-200 hover:border-gblue text-gblue text-xs font-semibold flex items-center gap-1 transition">
-                            <i class="ph-bold ph-path"></i> Fix Route
+                            <i class="ph-bold ph-path"></i> Edit Route
                         </button>` : ''}
                         <button type="button" onclick="moveDocumentToTrash(${jsArg(d.id)})" class="px-3 py-1.5 rounded-xl bg-white border border-gray-200 hover:bg-gyellow-light hover:border-gyellow text-gyellow-dark text-xs font-semibold flex items-center gap-1 transition">
                             <i class="ph-bold ph-trash"></i> Move to Trash
@@ -5516,7 +5529,7 @@ function text_(str) {
             const btnRepair = document.getElementById('btn-repair-legacy');
             if (!box) return;
             box.classList.remove('hidden');
-            const list = (items, key) => items.slice(0, 40).map(x => `<li><button type="button" class="font-mono font-bold text-gblue underline" onclick="openDocModal(${jsArg(x.id)})">${escapeHtml(x.id)}</button> — ${escapeHtml(x.title || '')}: <span class="text-gray-600">${escapeHtml((x[key] || []).join('; '))}</span>${key === 'problems' ? ` <button type="button" class="ml-1 px-2 py-0.5 rounded-lg bg-gblue text-white font-bold" onclick="openRouteEditor(${jsArg(x.id)})">Fix Route</button>` : ''}</li>`).join('') + (items.length > 40 ? `<li>… and ${items.length - 40} more</li>` : '');
+            const list = (items, key) => items.slice(0, 40).map(x => `<li><button type="button" class="font-mono font-bold text-gblue underline" onclick="openDocModal(${jsArg(x.id)})">${escapeHtml(x.id)}</button> — ${escapeHtml(x.title || '')}: <span class="text-gray-600">${escapeHtml((x[key] || []).join('; '))}</span>${key === 'problems' ? ` <button type="button" class="ml-1 px-2 py-0.5 rounded-lg bg-gblue text-white font-bold" onclick="openRouteEditor(${jsArg(x.id)})">Edit Route</button>` : ''}</li>`).join('') + (items.length > 40 ? `<li>… and ${items.length - 40} more</li>` : '');
             let html = '';
             if (repaired) html += `<p class="font-bold text-ggreen">✓ Repaired ${res.repaired} document(s) in the Google Sheet.</p>`;
             html += `<p><strong>${res.total}</strong> documents checked.</p>`;
@@ -5525,7 +5538,7 @@ function text_(str) {
                 ? `<div><strong>${res.needsRepair.length}</strong> document(s) need automatic repair:<ul class="list-disc pl-5 mt-1 space-y-0.5">${list(res.needsRepair, 'fixes')}</ul></div>`
                 : `<p class="text-ggreen font-bold">✓ No automatic repairs needed.</p>`;
             html += res.needsRoute.length
-                ? `<div class="p-2 rounded-xl bg-white border border-gred/40"><strong class="text-gred-dark">${res.needsRoute.length} document(s) route to an office that is not registered</strong> — use Fix Route to choose the correct offices:<ul class="list-disc pl-5 mt-1 space-y-1">${list(res.needsRoute, 'problems')}</ul></div>`
+                ? `<div class="p-2 rounded-xl bg-white border border-gred/40"><strong class="text-gred-dark">${res.needsRoute.length} document(s) route to an office that is not registered</strong> — use Edit Route to choose the correct offices:<ul class="list-disc pl-5 mt-1 space-y-1">${list(res.needsRoute, 'problems')}</ul></div>`
                 : `<p class="text-ggreen font-bold">✓ All routes use registered offices.</p>`;
             box.innerHTML = html;
             if (btnRepair) btnRepair.classList.toggle('hidden', repaired || !(res.needsRepair.length || (res.headerIssues || []).length));
@@ -5563,12 +5576,13 @@ function text_(str) {
 
         /* ---------- FIX ROUTE (one document) ---------- */
         let routeEditDocId = null;
+        let routeEditReturnToScan = false;
         let routeEditOffices = [];
 
         function openRouteEditor(docId) {
             const doc = documentsList.find(d => d.id === docId);
             if (!doc) return;
-            if (!isAdminUnlocked) { showToast('Only the System Administrator can fix a route.', 'error'); return; }
+            if (!isAdminUnlocked) { showToast('Only the System Administrator can edit a route.', 'error'); return; }
             routeEditDocId = doc.id;
             const registered = getRegisteredOfficesList();
             routeEditOffices = (doc.routeOffices || []).filter(o => registered.some(r => normOff(r) === normOff(o)))
@@ -5584,7 +5598,9 @@ function text_(str) {
         function closeRouteEditor() {
             const m = document.getElementById('route-edit-modal');
             m.classList.add('hidden'); m.classList.remove('flex');
+            const back = routeEditReturnToScan ? routeEditDocId : null;
             routeEditDocId = null;
+            if (back) { routeEditReturnToScan = false; processScannedCode(back); }
         }
 
         function renderRouteEditor(preferCurrent) {
@@ -5630,9 +5646,13 @@ function text_(str) {
                 trackingLogs.push({ logId: 'LOG-' + Date.now(), trackingId: doc.id, office: res.currentOffice, action: 'ROUTE UPDATED', handledBy: 'System Administrator', remarks: 'New route: ' + res.routeOffices.map(getOfficeAcronym).join(' → '), timestamp: res.timestamp, fileUrl: '' });
                 localWriteVersion++;
                 saveStateToLocalCache();
+                const reopenScan = routeEditReturnToScan;
+                routeEditReturnToScan = false;
                 closeRouteEditor();
+                routeEditReturnToScan = reopenScan;
                 refreshAdminViews();
                 if (activeModalDocId === doc.id && !document.getElementById('doc-detail-modal').classList.contains('hidden')) openDocModal(doc.id);
+                if (routeEditReturnToScan) { routeEditReturnToScan = false; processScannedCode(doc.id); }
                 showToast(`Route saved for ${doc.id}. ${getOfficeAcronym(res.currentOffice)} can now scan it.`, 'success');
             } finally {
                 if (btn) btn.disabled = false;
