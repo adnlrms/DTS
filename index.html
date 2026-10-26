@@ -13,7 +13,7 @@
          HARDCODED GOOGLE APPS SCRIPT WEB APP URL (/exec)
          ===================================================================== -->
     <script>
-        const DEFAULT_GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxkVmFWu7BnkDd_QAURdhQcvBBm984uZlMeQOHByut5RYOP0Vjn0D8b-lE236M6zFGULA/exec";
+        const DEFAULT_GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbytXu55iAZsvmQ_nDP9raVc1HGTrQoTcP6qK7RXODreCyU_A9QWwi2ZWWOYFvQXF19izA/exec";
 
         const PERMANENT_LOGOS = {
             depedSealDataUrl: "https://drive.google.com/file/d/1AnqM3tXDQgf7cSODB_LoHxYUJbM6B5at/view?usp=sharing",
@@ -1383,6 +1383,9 @@
  *     own step (uploadCompletionFile) before the scan is saved. Archive folders
  *     are remembered, so Drive is not searched on every upload.
  *
+ *   - COLUMN TITLES (v3.6): rows are always read by column POSITION (the same way
+ *     they are written), so renamed/shifted column titles in row 1 can no longer
+ *     mix up the data. Row 1 titles are rewritten to the standard names.
  *   - SYSTEM CHECK (v3.5): Admin > System Check tests the whole setup (camera,
  *     connection, server version, Drive permission, Sheet layout) and names the fix.
  *   - ADMIN OVERRIDE (v3.4): the System Administrator can Receive, Route, Complete
@@ -1412,7 +1415,13 @@
 // OPTIONAL: paste your Google Sheet URL or ID inside the quotes to pin the database:
 const PREFERRED_SPREADSHEET_ID_OR_URL = '';
 
-const SERVER_VERSION = '3.5';
+const SERVER_VERSION = '3.6';
+
+// Fixed column layout (data is written and read by POSITION; row 1 titles are only labels)
+const DOC_COLS = ['TrackingID', 'Title', 'StartParty', 'Type', 'Priority', 'OriginOffice', 'CurrentOffice',
+  'Status', 'CreatedBy', 'CreatedAt', 'LastUpdatedAt', 'ScannedFileUrl', 'MetaJSON'];
+const LOG_COLS = ['LogID', 'TrackingID', 'Office', 'Action', 'HandledBy', 'Remarks', 'Timestamp', 'FileUrl'];
+const USER_COLS = ['UserID', 'Name', 'Office', 'OfficeCode', 'Username', 'Password', 'Role'];
 
 const SHEET_DOCS = 'Documents';
 const SHEET_LOGS = 'TrackingLogs';
@@ -2002,7 +2011,7 @@ function getUsers_() {
   if (cached) { try { return JSON.parse(cached); } catch (e) {} }
   const ss = getSs_();
   ensureSetup_(ss);
-  const users = sheetToObjects(ss.getSheetByName(SHEET_USERS)).map(function (u) {
+  const users = sheetToObjectsFixed_(ss.getSheetByName(SHEET_USERS), USER_COLS).map(function (u) {
     u.UserID = String(u.UserID || ''); u.Username = String(u.Username || ''); u.Password = String(u.Password || '');
     return u;
   });
@@ -2021,7 +2030,7 @@ function getSettings_() {
 }
 
 function getSnapshotJson_(rev) {
-  const key = 'DT_SNAP_' + rev;
+  const key = 'DT_SNAP_' + SERVER_VERSION.replace('.', '_') + '_' + rev;
   const cached = cacheGetBig_(key);
   if (cached) return cached;
 
@@ -2036,8 +2045,8 @@ function getSnapshotJson_(rev) {
     version: SERVER_VERSION,
     sheetName: ss.getName(),
     sheetUrl: ss.getUrl(),
-    documents: sheetToObjects(ss.getSheetByName(SHEET_DOCS)),
-    logs: sheetToObjects(ss.getSheetByName(SHEET_LOGS)),
+    documents: sheetToObjectsFixed_(ss.getSheetByName(SHEET_DOCS), DOC_COLS),
+    logs: sheetToObjectsFixed_(ss.getSheetByName(SHEET_LOGS), LOG_COLS),
     users: getUsers_().map(stripPassword),
     settings: publicSettings
   });
@@ -2090,7 +2099,7 @@ function getSs_() {
 function switchDatabase_(targetSs) {
   props_().setProperty('DOCTRACK_SS_ID', targetSs.getId());
   SS_MEMO_ = targetSs;
-  cache_().removeAll(['DT_SETUP_OK', 'DT_USERS', 'DT_SETTINGS']);
+  cache_().removeAll([setupKey_(), 'DT_USERS', 'DT_SETTINGS']);
   ensureSetup_(targetSs, true);
 }
 
@@ -2150,10 +2159,29 @@ function getOrCreateDatabaseSpreadsheet() {
 }
 
 // Runs the full sheet check only once every 6 hours (cached), not on every request
+function setupKey_() { return 'DT_SETUP_OK_' + SERVER_VERSION.replace('.', '_'); }
+
 function ensureSetup_(ss, haveLock) {
-  if (cache_().get('DT_SETUP_OK') === ss.getId()) return;
+  if (cache_().get(setupKey_()) === ss.getId()) return;
   setupSheets(ss, haveLock);
-  cache_().put('DT_SETUP_OK', ss.getId(), CACHE_TTL);
+  cache_().put(setupKey_(), ss.getId(), CACHE_TTL);
+}
+
+// Rewrites row 1 to the standard titles. Extra titles to the right are cleared only if that column is empty.
+function fixHeaderRow_(sheet, cols) {
+  if (!sheet) return [];
+  const width = Math.max(cols.length, sheet.getLastColumn());
+  const header = sheet.getRange(1, 1, 1, width).getValues()[0];
+  const changes = [];
+  cols.forEach(function (name, i) { if (String(header[i] || '').trim() !== name) changes.push('Column ' + (i + 1) + ': "' + (header[i] || 'blank') + '" → "' + name + '"'); });
+  if (changes.length) sheet.getRange(1, 1, 1, cols.length).setValues([cols]);
+  const lastRow = sheet.getLastRow();
+  for (let c = cols.length + 1; c <= width; c++) {
+    if (!String(header[c - 1] || '').trim()) continue;
+    const hasData = lastRow >= 2 && sheet.getRange(2, c, lastRow - 1, 1).getValues().some(function (r) { return r[0] !== '' && r[0] !== null; });
+    if (!hasData) { sheet.getRange(1, c).setValue(''); changes.push('Column ' + c + ': removed unused title "' + header[c - 1] + '"'); }
+  }
+  return changes;
 }
 
 function setupSheets(ssArg, haveLock) {
@@ -2202,6 +2230,13 @@ function setupSheets(ssArg, haveLock) {
       ['adminCode', 'ADMIN-2026'], ['overrideCode', 'OVERRIDE-2026'], ['lapseThresholdHours', '24']
     ]);
   }
+
+  // Make sure row 1 titles match the fixed layout (data is read by position)
+  try {
+    fixHeaderRow_(docSheet, DOC_COLS);
+    fixHeaderRow_(logSheet, LOG_COLS);
+    fixHeaderRow_(userSheet, USER_COLS);
+  } catch (e) {}
 
   // Remove the default 'Sheet1' ONLY if it is completely empty
   const defaultSheet = ss.getSheetByName('Sheet1');
@@ -2326,14 +2361,12 @@ function normalizeDocRow_(r, users) {
 function scanLegacyDocs_(ss, apply) {
   const docSheet = ss.getSheetByName(SHEET_DOCS);
   const users = getUsers_();
-  const expected = ['TrackingID', 'Title', 'StartParty', 'Type', 'Priority', 'OriginOffice', 'CurrentOffice',
-    'Status', 'CreatedBy', 'CreatedAt', 'LastUpdatedAt', 'ScannedFileUrl', 'MetaJSON'];
+  const expected = DOC_COLS;
   const header = docSheet.getRange(1, 1, 1, Math.max(13, docSheet.getLastColumn())).getValues()[0];
   const headerIssues = [];
   expected.forEach(function (name, i) {
     if (String(header[i] || '').trim() !== name) headerIssues.push('Column ' + (i + 1) + ' should be "' + name + '" (found "' + (header[i] || 'blank') + '")');
   });
-  const onlyMissing = headerIssues.length > 0 && expected.every(function (name, i) { return !String(header[i] || '').trim() || String(header[i]).trim() === name; });
 
   const out = { status: 'success', total: 0, needsRepair: [], needsRoute: [], headerIssues: headerIssues, repaired: 0 };
   const lastRow = docSheet.getLastRow();
@@ -2361,8 +2394,8 @@ function scanLegacyDocs_(ss, apply) {
   });
   if (apply) {
     if (changed) rng.setValues(rows);
-    if (onlyMissing) {
-      docSheet.getRange(1, 1, 1, 13).setValues([expected]);
+    if (headerIssues.length) {
+      fixHeaderRow_(docSheet, DOC_COLS);
       out.headerIssues = [];
     }
   }
@@ -2605,6 +2638,26 @@ function authorizeDrive() {
   Logger.log('Drive access OK. Completed PDFs will be saved in: ' + folder.getName());
 }
 
+// Reads data rows by POSITION using the fixed column names (row 1 titles are ignored)
+function sheetToObjectsFixed_(sheet, cols) {
+  if (!sheet) return [];
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  const rows = sheet.getRange(2, 1, lastRow - 1, cols.length).getValues();
+  const tz = Session.getScriptTimeZone();
+  const out = [];
+  for (let r = 0; r < rows.length; r++) {
+    const row = rows[r];
+    if (row[0] === '' || row[0] === null) continue; // skip blank rows left by batch deletes
+    const obj = {};
+    for (let i = 0; i < cols.length; i++) {
+      obj[cols[i]] = (row[i] instanceof Date) ? Utilities.formatDate(row[i], tz, DATE_FORMAT) : row[i];
+    }
+    out.push(obj);
+  }
+  return out;
+}
+
 function sheetToObjects(sheet) {
   if (!sheet) return [];
   const rows = sheet.getDataRange().getValues();
@@ -2704,8 +2757,8 @@ function text_(str) {
         let logsByDocIdMap = new Map();
         let searchIndexMap = new Map();
 
-        const APP_VERSION = '3.5';
-        const REQUIRED_SERVER_VERSION = '3.5';
+        const APP_VERSION = '3.6';
+        const REQUIRED_SERVER_VERSION = '3.6';
         let serverVersion = '';
         let lastSyncProblem = null; // { kind, message } while the Google Sheet cannot be reached
         const GAS_URL_OVERRIDE_KEY = 'doctrack_gas_url_override';
@@ -6374,6 +6427,10 @@ function text_(str) {
                     }
                     meta.routeOffices = route;
                     meta.currentRouteIndex = idx;
+                    // Safety net: never show raw route data (JSON) as a date
+                    const cleanDate = (v) => /^\s*[\[{]/.test(String(v || '')) ? '' : String(v || '');
+                    d.CreatedAt = cleanDate(d.CreatedAt);
+                    d.LastUpdatedAt = cleanDate(d.LastUpdatedAt);
                     const updatedMs = meta.lastUpdatedMs || Date.parse(d.LastUpdatedAt) || Date.parse(d.CreatedAt) || Date.now();
                     return {
                         arrivedAtMs: meta.arrivedAtMs || updatedMs,
