@@ -13,7 +13,7 @@
          HARDCODED GOOGLE APPS SCRIPT WEB APP URL (/exec)
          ===================================================================== -->
     <script>
-        const DEFAULT_GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbx6z4MXcRab_W2gi_1EtqrIQWLGjqUZhd-J_7KMb5coprmZWg5MRuQ8cIx1qvX6O1Hxpw/exec";
+        const DEFAULT_GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbw1ABji1xItvUVSKtVX_a7-BT-ml5N1ERULsXlbIaQtqiPz54I1k5SqajEIRoNn-YQk3g/exec";
 
         const PERMANENT_LOGOS = {
             depedSealDataUrl: "https://drive.google.com/file/d/1AnqM3tXDQgf7cSODB_LoHxYUJbM6B5at/view?usp=sharing",
@@ -2987,12 +2987,8 @@ function text_(str) {
             return offices;
         }
 
+        // The route starts EMPTY - offices appear only when the user taps (tags) them
         function renderRouteBuilderSteps() {
-            const offices = getRegisteredOfficesList();
-            if (selectedRouteOffices.length === 0) {
-                const firstStop = offices.find(o => !activeUser || normOff(o) !== normOff(activeUser.office)) || offices[0];
-                selectedRouteOffices = firstStop ? [firstStop] : [];
-            }
             renderOneTapOfficeChips();
         }
 
@@ -3173,19 +3169,26 @@ function text_(str) {
 
             renderQrCodeToContainer(id);
 
-            const existingLogs = trackingLogs.filter(l => l.trackingId === id);
+            // Routing table: blank unless offices were tagged.
+            //  - Draft: row 1 = first tagged office (forwarded now), then each remaining tagged office in order.
+            //  - Registered: actual routing history first, then the tagged offices not yet reached.
+            const taggedRoute = docOverride ? (docOverride.routeOffices || []) : [...selectedRouteOffices];
+            const existingLogs = docOverride ? trackingLogs.filter(l => l.trackingId === id) : [];
             const cell = 'border border-black px-1.5 py-0.5 align-middle';
-            let rowsHtml = '';
-            for (let i = 0; i < SLIP_ROUTING_ROWS; i++) {
-                const log = existingLogs[i];
-                if (log) {
-                    rowsHtml += `<tr class="h-[24px]"><td class="${cell} text-center font-mono text-[9px]">${escapeHtml(log.timestamp)}</td><td class="${cell} font-semibold text-[9.5px]">${escapeHtml(log.office)}</td><td class="${cell} text-center text-[9px]">${escapeHtml(log.handledBy)}</td><td class="${cell} text-[9px]"><strong>${escapeHtml(log.action)}:</strong> ${escapeHtml(log.remarks)}</td></tr>`;
-                } else if (i === 0 && !docOverride) {
-                    rowsHtml += `<tr class="h-[24px]"><td class="${cell} text-center font-mono text-[9px]">${escapeHtml(createdDate)}</td><td class="${cell} font-semibold text-[9.5px]">${escapeHtml(firstOfficeInRoute)}</td><td class="${cell} text-center text-[9px]">${escapeHtml(fallbackUser.name)}</td><td class="${cell} text-[9px]"><strong>FORWARDED:</strong> Route Step 1 — ${escapeHtml(firstOfficeInRoute)}</td></tr>`;
-                } else {
-                    rowsHtml += `<tr class="h-[24px]"><td class="${cell}"></td><td class="${cell}"></td><td class="${cell}"></td><td class="${cell}"></td></tr>`;
+            const blankRow = `<tr class="h-[24px]"><td class="${cell}"></td><td class="${cell}"></td><td class="${cell}"></td><td class="${cell}"></td></tr>`;
+            const officeOnlyRow = (office) => `<tr class="h-[24px]"><td class="${cell}"></td><td class="${cell} font-semibold text-[9.5px]">${escapeHtml(office)}</td><td class="${cell}"></td><td class="${cell}"></td></tr>`;
+            const rows = [];
+            if (docOverride) {
+                existingLogs.forEach(log => rows.push(`<tr class="h-[24px]"><td class="${cell} text-center font-mono text-[9px]">${escapeHtml(log.timestamp)}</td><td class="${cell} font-semibold text-[9.5px]">${escapeHtml(log.office)}</td><td class="${cell} text-center text-[9px]">${escapeHtml(log.handledBy)}</td><td class="${cell} text-[9px]"><strong>${escapeHtml(log.action)}:</strong> ${escapeHtml(log.remarks)}</td></tr>`));
+                if ((docOverride.status || 'IN TRANSIT') === 'IN TRANSIT') {
+                    taggedRoute.slice((docOverride.currentRouteIndex || 0) + 1).forEach(office => rows.push(officeOnlyRow(office)));
                 }
+            } else if (taggedRoute.length > 0) {
+                rows.push(`<tr class="h-[24px]"><td class="${cell} text-center font-mono text-[9px]">${escapeHtml(createdDate)}</td><td class="${cell} font-semibold text-[9.5px]">${escapeHtml(taggedRoute[0])}</td><td class="${cell} text-center text-[9px]">${escapeHtml(fallbackUser.name)}</td><td class="${cell} text-[9px]"><strong>FORWARDED:</strong> Route Step 1 — ${escapeHtml(taggedRoute[0])}</td></tr>`);
+                taggedRoute.slice(1).forEach(office => rows.push(officeOnlyRow(office)));
             }
+            let rowsHtml = rows.slice(0, SLIP_ROUTING_ROWS).join('');
+            for (let i = rows.length; i < SLIP_ROUTING_ROWS; i++) rowsHtml += blankRow;
             const routingRowsEl = document.getElementById('tpl-routing-rows');
             if (routingRowsEl) routingRowsEl.innerHTML = rowsHtml;
         }
