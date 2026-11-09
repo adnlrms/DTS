@@ -4160,7 +4160,7 @@ function text_(str) {
             if (tpl === 'B') {
                 const bRows = [];
                 if (docOverride) {
-                    existingLogs.forEach(l => bRows.push({ to: l.office, sig: l.handledBy, action: `<strong>${escapeHtml(l.action)}:</strong> ${escapeHtml(l.remarks)}`, released: l.timestamp }));
+                    existingLogs.forEach(l => bRows.push({ to: l.office, sig: '', action: `<strong>${escapeHtml(l.action)}:</strong> ${escapeHtml(l.remarks)}`, released: l.timestamp }));
                     if ((docOverride.status || 'IN TRANSIT') === 'IN TRANSIT') taggedRoute.slice((docOverride.currentRouteIndex || 0) + 1).forEach(o => bRows.push({ to: o, sig: '', action: '', released: '' }));
                 } else if (taggedRoute.length) {
                     bRows.push({ to: taggedRoute[0], sig: '', action: `<strong>FORWARDED:</strong> Route Step 1`, released: createdDate });
